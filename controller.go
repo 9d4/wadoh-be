@@ -157,8 +157,14 @@ func (c *Controller) RegisterNewDevice(ctx context.Context, req *pb.RegisterDevi
 				close(done)
 				return
 			case item := <-qrChan:
-				c.logger.Info().Str("code", item.Code).Send()
+				if item.Event == "" {
+					// qrChan is closed
+					close(done)
+					return
+				}
+
 				if item.Event == whatsmeow.QRChannelEventCode {
+					c.logger.Info().Str("code", item.Code).Send()
 					select {
 					case <-ctx.Done():
 						return
@@ -186,9 +192,6 @@ func (c *Controller) RegisterNewDevice(ctx context.Context, req *pb.RegisterDevi
 				}
 			}
 		}
-
-		// qrChan is closed, exit now
-		close(done)
 	}()
 
 	go func() {
