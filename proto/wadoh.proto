@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option go_package = "./pb";
+
+service ControllerService {
+    rpc Status (StatusRequest) returns (StatusResponse);
+    rpc RegisterDevice (RegisterDeviceRequest) returns (stream RegisterDeviceResponse);
+}
+
+message StatusRequest {
+    string jid = 1;
+}
+
+message StatusResponse {
+    enum Status {
+        STATUS_UNKNOWN = 0;
+        STATUS_ACTIVE = 1;
+        STATUS_DISCONNECTED = 2;
+        STATUS_NOT_FOUND = 3;
+    }
+
+    Status status = 1;
+}
+
+message RegisterDeviceRequest {
+    string phone = 1;
+    bool push_notification = 2;
+}
+
+message RegisterDeviceResponse {
+    optional string qr = 1;
+    optional string pair_code = 2;
+    optional bool loggedIn = 3;
+    optional string jid = 4;
+}
