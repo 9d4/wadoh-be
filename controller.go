@@ -11,6 +11,7 @@ import (
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types"
 	waLog "go.mau.fi/whatsmeow/util/log"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/9d4/wadoh/pb"
 )
@@ -115,46 +116,52 @@ func (c *Controller) Status(jid string) (pb.StatusResponse_Status, error) {
 }
 
 // RegisterNewDevice requests new device registration
-func (c *Controller) RegisterNewDevice(ctx context.Context, req *pb.RegisterDeviceRequest, qr, pairCode, jid chan string) (<-chan struct{}, error) {
+func (c *Controller) RegisterNewDevice(
+	req *pb.RegisterDeviceRequest,
+	resc chan *pb.RegisterDeviceResponse,
+	done chan struct{},
+) error {
 	device, err := c.container.GetDevice(types.NewJID(req.Phone, types.DefaultUserServer))
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	if device == nil {
 		device = c.container.NewDevice()
 	}
 
 	logger := c.container.logger.With().Str("logger", "client-reg:"+req.Phone).Logger()
 	cli := whatsmeow.NewClient(device, waLog.Zerolog(logger))
-
 	if cli.Store.ID != nil {
-		return nil, errors.New("device already registered")
+		return errors.New("device already registered")
 	}
 
 	qrChan, err := cli.GetQRChannel(context.Background())
 	if err != nil {
-		return nil, err
+		return err
 	}
-
 	if err := cli.Connect(); err != nil {
-		return nil, err
+		return err
 	}
 
-	done := make(chan struct{})
-
+	pairSuccess := false
 	go func() {
-		<-ctx.Done()
-		cli.Disconnect()
-		cli.RemoveEventHandlers()
+		<-done
+		c.logger.Debug().Msg("cleanup on <-done closed")
+		defer c.logger.Debug().Msg("cleanup done")
+		if !pairSuccess {
+			// this condition indicates the caller don't need response anymore (network error or client disconnected).
+			// or qrChan has ran out.
+			c.logger.Debug().Msg("disconnecting due to cli is not loggedIn")
+			cli.Disconnect()
+			cli.RemoveEventHandlers()
+		}
 	}()
 
 	go func() {
 		defer c.logger.Debug().Msg("qrchan routine exited")
 		for {
 			select {
-			case <-ctx.Done():
-				close(done)
+			case <-done:
 				return
 			case item := <-qrChan:
 				if item.Event == "" {
@@ -166,29 +173,34 @@ func (c *Controller) RegisterNewDevice(ctx context.Context, req *pb.RegisterDevi
 				if item.Event == whatsmeow.QRChannelEventCode {
 					c.logger.Info().Str("code", item.Code).Send()
 					select {
-					case <-ctx.Done():
+					case <-done:
 						return
 					default:
-						qr <- item.Code
+						resc <- &pb.RegisterDeviceResponse{Qr: proto.String(item.Code)}
 						continue
 					}
 				}
 
 				if item.Event == "success" {
 					select {
-					case <-ctx.Done():
+					case <-done:
 						return
 					default:
-						jid <- cli.Store.ID.String()
+						pairSuccess = true
+						resc <- &pb.RegisterDeviceResponse{
+							Jid:      proto.String(cli.Store.ID.String()),
+							LoggedIn: proto.Bool(true),
+						}
+
+						// add to cache
+						c.clientsLock.Lock()
+						defer c.clientsLock.Unlock()
+						c.clients[cli.Store.ID.String()] = cli
+
+						close(done)
+						return
 					}
 
-					// add to cache
-					c.clientsLock.Lock()
-					defer c.clientsLock.Unlock()
-					c.clients[cli.Store.ID.String()] = cli
-
-					close(done)
-					return
 				}
 			}
 		}
@@ -197,24 +209,26 @@ func (c *Controller) RegisterNewDevice(ctx context.Context, req *pb.RegisterDevi
 	go func() {
 		defer c.logger.Debug().Msg("paircode routine exited")
 		tick := time.NewTicker(3 * time.Minute)
+		defer tick.Stop()
 		for {
 			select {
-			case <-ctx.Done():
-				return
 			case <-done:
 				return
 			default:
-			}
+				code, err := cli.PairPhone(req.Phone, req.PushNotification, whatsmeow.PairClientChrome, "Chrome (MacOS)")
+				if err == nil {
+					resc <- &pb.RegisterDeviceResponse{PairCode: proto.String(code)}
+					c.logger.Debug().Msg("paircode sent to channel")
+				}
 
-			code, err := cli.PairPhone(req.Phone, req.PushNotification, whatsmeow.PairClientChrome, "Chrome (MacOS)")
-			if err == nil {
-				pairCode <- code
-				c.logger.Debug().Msg("paircode sent to channel")
+				select {
+				case <-done:
+					return
+				case <-tick.C:
+				}
 			}
-
-			<-tick.C
 		}
 	}()
 
-	return done, nil
+	return nil
 }

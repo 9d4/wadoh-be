@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/9d4/wadoh/pb"
-	"google.golang.org/protobuf/proto"
 )
 
 type controllerServiceServer struct {
@@ -22,45 +21,30 @@ func (c *controllerServiceServer) Status(ctx context.Context, req *pb.StatusRequ
 }
 
 func (c *controllerServiceServer) RegisterDevice(req *pb.RegisterDeviceRequest, stream pb.ControllerService_RegisterDeviceServer) error {
-	qr, pairCode, jid := make(chan string), make(chan string), make(chan string)
+	resc := make(chan *pb.RegisterDeviceResponse)
+	done := make(chan struct{})
 
-	done, err := c.controller.RegisterNewDevice(stream.Context(), req, qr, pairCode, jid)
+	err := c.controller.RegisterNewDevice(req, resc, done)
 	if err != nil {
 		return err
 	}
 
-	go func() {
+OUTER:
+	for {
 		select {
-		case j := <-jid:
-			stream.Send(&pb.RegisterDeviceResponse{
-				LoggedIn: proto.Bool(true),
-				Jid:      &j,
-			})
-			close(qr)
-			close(pairCode)
-
 		case <-stream.Context().Done():
-			close(qr)
-			close(pairCode)
-
+			close(done)
 		case <-done:
-			close(qr)
-			close(pairCode)
-		}
-	}()
+			close(resc)
+			break OUTER
+		case res := <-resc:
+			if res.Jid != nil || res.LoggedIn != nil {
+				stream.Send(res)
+				break OUTER
+			}
 
-	go func() {
-		for code := range pairCode {
-			stream.Send(&pb.RegisterDeviceResponse{
-				PairCode: proto.String(code),
-			})
+			stream.Send(res)
 		}
-	}()
-
-	for qr := range qr {
-		stream.Send(&pb.RegisterDeviceResponse{
-			Qr: proto.String(qr),
-		})
 	}
 
 	return nil
