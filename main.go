@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/providers/env"
@@ -83,8 +85,19 @@ func main() {
 	controllerServer := &controllerServiceServer{controller: controller}
 	pb.RegisterControllerServiceServer(grpcServer, controllerServer)
 
-	log.Info().Str("addr", lis.Addr().String()).Msg("gRPC Listening")
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatal().Err(err).Send()
-	}
+	go func() {
+		log.Info().Str("addr", lis.Addr().String()).Msg("gRPC Listening")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatal().Err(err).Send()
+		}
+	}()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGTERM, os.Interrupt)
+
+	<-interrupt
+	log.Info().Msg("shutting down...")
+	grpcServer.GracefulStop()
+	<-controller.Shutdown()
+	log.Info().Msg("exited gracefully")
 }

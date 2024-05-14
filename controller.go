@@ -29,6 +29,8 @@ type Controller struct {
 
 	recvMessageC     []chan *EventMessage
 	recvMessageCLock sync.Mutex
+
+	sendMessageWG sync.WaitGroup
 }
 
 func NewController(container *Container, logger zerolog.Logger) *Controller {
@@ -50,6 +52,23 @@ func (c *Controller) loop() {
 		c.logger.Debug().Msg("loop end")
 		<-tick.C
 	}
+}
+
+func (c *Controller) Shutdown() <-chan error {
+	finish := make(chan error)
+	go func() {
+		c.sendMessageWG.Wait()
+		var wg sync.WaitGroup
+		for _, cli := range c.clients {
+			wg.Add(1)
+			cli.Disconnect()
+			wg.Done()
+		}
+		wg.Wait()
+		finish <- nil
+	}()
+
+	return finish
 }
 
 func (c *Controller) ConnectAllDevices() error {
@@ -275,7 +294,10 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	}
 	toJid := types.NewJID(req.Phone, types.DefaultUserServer)
 
+	c.sendMessageWG.Add(1)
 	go func(body string) {
+		defer c.sendMessageWG.Done()
+
 		const min, max = 1, 4
 		delay := time.Duration(rand.IntN(max-min)+max) * time.Second
 
