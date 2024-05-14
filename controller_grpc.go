@@ -29,11 +29,14 @@ func (c *controllerServiceServer) RegisterDevice(req *pb.RegisterDeviceRequest, 
 		return err
 	}
 
+	go func() {
+		<-stream.Context().Done()
+		close(done)
+	}()
+
 OUTER:
 	for {
 		select {
-		case <-stream.Context().Done():
-			close(done)
 		case <-done:
 			close(resc)
 			break OUTER
