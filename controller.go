@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"math/rand/v2"
 	"slices"
 	"sync"
 	"time"
@@ -105,23 +106,30 @@ func (c *Controller) connectDevice(device *store.Device) {
 }
 
 func (c *Controller) eventHandler(jid string) func(interface{}) {
+	send := func(evt *EventMessage) {
+		for _, ch := range c.recvMessageC {
+			ch <- evt
+		}
+	}
+
 	fn := func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Message:
 			event := &EventMessage{
-				Message: v,
 				JID:     jid,
+				From:    v.Info.Sender.User,
+				Message: v.Message.GetConversation(),
 			}
+			send(event)
+			c.logger.Debug().Any("evtMessage", v).Msg("sent message event to channels")
 
-			for _, ch := range c.recvMessageC {
-				ch <- event
-				c.logger.Debug().Any("evtMessage", v).Msg("sent message event to channel")
-			}
+		default:
+			c.logger.Debug().Msgf("unhandled event case: %#+v", evt)
 		}
 	}
+
 	return fn
 }
-
 func (c *Controller) Status(jid string) (pb.StatusResponse_Status, error) {
 	cli, err := c.getClient(jid)
 	if err != nil {
@@ -265,14 +273,31 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	if err != nil {
 		return err
 	}
+	toJid := types.NewJID(req.Phone, types.DefaultUserServer)
 
-	_, err = cli.SendMessage(ctx, types.NewJID(req.Phone, types.DefaultUserServer), &waProto.Message{
-		Conversation: proto.String(req.Body),
-	})
+	go func(body string) {
+		const min, max = 1, 4
+		delay := time.Duration(rand.IntN(max-min)+max) * time.Second
 
-	if err != nil {
-		return err
-	}
+		cli.SendPresence(types.PresenceAvailable)
+		cli.SendChatPresence(toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+
+		tick := time.NewTicker(delay)
+		defer tick.Stop()
+		c.logger.Debug().Dur("typing delay", delay).Send()
+		<-tick.C
+
+		cli.SendChatPresence(toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
+		cli.SendPresence(types.PresenceUnavailable)
+
+		if _, err := cli.SendMessage(context.Background(), toJid, &waProto.Message{
+			Conversation: &body,
+		}); err != nil {
+			c.logger.Debug().Caller().Err(err).Send()
+		} else {
+			c.logger.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("message sent")
+		}
+	}(req.Body)
 
 	return nil
 }
@@ -301,6 +326,7 @@ func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, 
 }
 
 type EventMessage struct {
-	*events.Message
-	JID string
+	JID     string
+	From    string
+	Message string
 }

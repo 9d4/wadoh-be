@@ -1,6 +1,6 @@
 module github.com/9d4/wadoh
 
-go 1.21
+go 1.22.0
 
 require (
 	github.com/knadh/koanf/parsers/dotenv v1.0.0

@@ -70,8 +70,8 @@ func (c *controllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.Contro
 	for evt := range recv {
 		stream.Send(&pb.EventMessage{
 			Jid:     evt.JID,
-			From:    evt.Message.Info.Sender.User,
-			Message: evt.Message.Message.GetConversation(),
+			From:    evt.From,
+			Message: evt.Message,
 		})
 	}
 	return nil
