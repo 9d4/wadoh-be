@@ -52,3 +52,27 @@ OUTER:
 
 	return nil
 }
+
+func (c *controllerServiceServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.Empty, error) {
+	if err := c.controller.SendMessage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+func (c *controllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.ControllerService_ReceiveMessageServer) error {
+	recv, err := c.controller.ReceiveMessage(stream.Context())
+	if err != nil {
+		return err
+	}
+
+	for evt := range recv {
+		stream.Send(&pb.EventMessage{
+			Jid:     evt.JID,
+			From:    evt.Message.Info.Sender.User,
+			Message: evt.Message.Message.GetConversation(),
+		})
+	}
+	return nil
+}

@@ -5,6 +5,12 @@ option go_package = "./pb";
 service ControllerService {
     rpc Status (StatusRequest) returns (StatusResponse);
     rpc RegisterDevice (RegisterDeviceRequest) returns (stream RegisterDeviceResponse);
+    rpc SendMessage (SendMessageRequest) returns (Empty);
+    rpc ReceiveMessage (Empty) returns (stream EventMessage);
+}
+
+message Empty {
+
 }
 
 message StatusRequest {
@@ -32,4 +38,16 @@ message RegisterDeviceResponse {
     optional string pair_code = 2;
     optional bool loggedIn = 3;
     optional string jid = 4;
+}
+
+message SendMessageRequest {
+    string jid = 1;
+    string phone = 2;
+    string body = 3;
+}
+
+message EventMessage {
+    string jid = 1;
+    string from = 2;
+    string message = 3;
 }

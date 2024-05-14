@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 	"go.mau.fi/whatsmeow"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types"
+	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
@@ -22,13 +25,17 @@ type Controller struct {
 
 	clients     map[string]*whatsmeow.Client
 	clientsLock sync.Mutex
+
+	recvMessageC     []chan *EventMessage
+	recvMessageCLock sync.Mutex
 }
 
 func NewController(container *Container, logger zerolog.Logger) *Controller {
 	c := &Controller{
-		container: container,
-		logger:    logger,
-		clients:   make(map[string]*whatsmeow.Client),
+		container:    container,
+		logger:       logger,
+		clients:      make(map[string]*whatsmeow.Client),
+		recvMessageC: make([]chan *EventMessage, 0),
 	}
 	return c
 }
@@ -93,6 +100,26 @@ func (c *Controller) connectDevice(device *store.Device) {
 		c.logger.Err(err).Str("id", device.ID.String()).Msg("unable to connect client")
 		return
 	}
+
+	cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
+}
+
+func (c *Controller) eventHandler(jid string) func(interface{}) {
+	fn := func(evt interface{}) {
+		switch v := evt.(type) {
+		case *events.Message:
+			event := &EventMessage{
+				Message: v,
+				JID:     jid,
+			}
+
+			for _, ch := range c.recvMessageC {
+				ch <- event
+				c.logger.Debug().Any("evtMessage", v).Msg("sent message event to channel")
+			}
+		}
+	}
+	return fn
 }
 
 func (c *Controller) Status(jid string) (pb.StatusResponse_Status, error) {
@@ -231,4 +258,49 @@ func (c *Controller) RegisterNewDevice(
 	}()
 
 	return nil
+}
+
+func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest) error {
+	cli, err := c.getClient(req.Jid)
+	if err != nil {
+		return err
+	}
+
+	_, err = cli.SendMessage(ctx, types.NewJID(req.Phone, types.DefaultUserServer), &waProto.Message{
+		Conversation: proto.String(req.Body),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, error) {
+	ch := make(chan *EventMessage)
+
+	c.recvMessageCLock.Lock()
+	defer c.recvMessageCLock.Unlock()
+	c.recvMessageC = append(c.recvMessageC, ch)
+
+	go func() {
+		<-ctx.Done()
+		c.logger.Debug().Msg("cleaning recv message channel")
+		c.recvMessageCLock.Lock()
+		defer c.recvMessageCLock.Unlock()
+
+		c.recvMessageC = slices.DeleteFunc(c.recvMessageC, func(c chan *EventMessage) bool {
+			return c == ch
+		})
+
+		c.logger.Debug().Int("count", len(c.recvMessageC)).Msg("recvMessageC")
+	}()
+
+	return ch, nil
+}
+
+type EventMessage struct {
+	*events.Message
+	JID string
 }
