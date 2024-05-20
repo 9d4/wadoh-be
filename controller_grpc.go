@@ -31,6 +31,11 @@ func (c *controllerServiceServer) RegisterDevice(req *pb.RegisterDeviceRequest, 
 
 	go func() {
 		<-stream.Context().Done()
+		select {
+		case <-done:
+			return
+		default:
+		}
 		close(done)
 	}()
 
