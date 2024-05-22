@@ -17,8 +17,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.mau.fi/whatsmeow/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/9d4/wadoh/pb"
 )
@@ -37,6 +39,8 @@ func init() {
 		log.Logger = log.Level(zerolog.TraceLevel)
 		log.Debug().Msg("development mode")
 	}
+	
+	store.DeviceProps.Os = proto.String("Wadoh")
 }
 
 func loadConfig() {
