@@ -22,7 +22,11 @@ FROM debian:bookworm
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive \
     apt-get install --no-install-recommends --assume-yes \
-    libsqlite3-0
+    libsqlite3-0 \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
 
 WORKDIR /etc/wadoh-be/
 EXPOSE 50051
