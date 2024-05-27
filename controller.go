@@ -17,7 +17,7 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/9d4/wadoh/pb"
+	"github.com/9d4/wadoh-be/pb"
 )
 
 type Controller struct {

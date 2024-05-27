@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/9d4/wadoh/pb"
+	"github.com/9d4/wadoh-be/pb"
 )
 
 type controllerServiceServer struct {

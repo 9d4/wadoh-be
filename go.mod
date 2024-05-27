@@ -1,4 +1,4 @@
-module github.com/9d4/wadoh
+module github.com/9d4/wadoh-be
 
 go 1.22.0
 

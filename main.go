@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/9d4/wadoh/pb"
+	"github.com/9d4/wadoh-be/pb"
 )
 
 var konf = koanf.New(".")
