@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/9d4/wadoh-be/pb"
 )
@@ -80,4 +84,30 @@ func (c *controllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.Contro
 		})
 	}
 	return nil
+}
+
+func (c *controllerServiceServer) GetWebhook(ctx context.Context, req *pb.GetWebhookRequest) (*pb.GetWebhookResponse, error) {
+	res, err := c.controller.GetWebhook(ctx, req.GetJid())
+	if err != nil {
+		if errors.Is(err, ErrWebhookNotFound) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, err
+	}
+	return res, nil
+}
+
+func (c *controllerServiceServer) SaveWebhook(ctx context.Context, req *pb.SaveWebhookRequest) (*pb.Empty, error) {
+	if err := c.controller.SaveWebhook(ctx, req.GetJid(), req.GetUrl()); err != nil {
+		return nil, err
+	}
+
+	return &pb.Empty{}, nil
+}
+
+func (c *controllerServiceServer) DeleteWebhook(ctx context.Context, req *pb.DeleteWebhookRequest) (*pb.Empty, error) {
+	if err := c.controller.DeleteWebhook(ctx, req.GetJid()); err != nil {
+		return nil, err
+	}
+	return &pb.Empty{}, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"math/rand/v2"
 	"slices"
@@ -20,6 +21,10 @@ import (
 	"github.com/9d4/wadoh-be/pb"
 )
 
+var (
+	maxWebhookWorker = 100
+)
+
 type Controller struct {
 	container *Container
 	logger    zerolog.Logger
@@ -27,6 +32,7 @@ type Controller struct {
 	clients     map[string]*whatsmeow.Client
 	clientsLock sync.Mutex
 
+	// recvMessageC contains channels for event subscribers
 	recvMessageC     []chan *EventMessage
 	recvMessageCLock sync.Mutex
 
@@ -40,6 +46,11 @@ func NewController(container *Container, logger zerolog.Logger) *Controller {
 		clients:      make(map[string]*whatsmeow.Client),
 		recvMessageC: make([]chan *EventMessage, 0),
 	}
+
+	workerChan := make(chan *EventMessage)
+	c.recvMessageC = append(c.recvMessageC, workerChan)
+	c.startWebhookWorker(workerChan)
+
 	return c
 }
 
@@ -48,10 +59,14 @@ func (c *Controller) loop() {
 	tick := time.NewTicker(10 * time.Second)
 	for {
 		c.logger.Debug().Msg("loop start")
-
+		c.ConnectAllDevices()
 		c.logger.Debug().Msg("loop end")
 		<-tick.C
 	}
+}
+
+func (c *Controller) startWebhookWorker(ec chan *EventMessage) {
+	startWebhook(c, ec, maxWebhookWorker)
 }
 
 func (c *Controller) Shutdown() <-chan error {
@@ -62,6 +77,11 @@ func (c *Controller) Shutdown() <-chan error {
 		for _, cli := range c.clients {
 			wg.Add(1)
 			cli.Disconnect()
+			wg.Done()
+		}
+		for _, ec := range c.recvMessageC {
+			wg.Add(1)
+			close(ec)
 			wg.Done()
 		}
 		wg.Wait()
@@ -137,10 +157,17 @@ func (c *Controller) eventHandler(jid string) func(interface{}) {
 			event := &EventMessage{
 				JID:     jid,
 				From:    v.Info.Sender.User,
-				Message: v.Message.GetConversation(),
+				Message: v.Message.ExtendedTextMessage.GetText(),
 			}
+
+			// TODO: better handling message and media
+			// for now just handle text, if no nothing in it don't send event
+			if event.Message == "" {
+				return
+			}
+
 			send(event)
-			c.logger.Debug().Any("evtMessage", v).Msg("sent message event to channels")
+			c.logger.Debug().Any("evtMessage", event).Msg("sent message event to channels")
 
 		default:
 			c.logger.Debug().Msgf("unhandled event case: %#+v", evt)
@@ -149,6 +176,7 @@ func (c *Controller) eventHandler(jid string) func(interface{}) {
 
 	return fn
 }
+
 func (c *Controller) Status(jid string) (pb.StatusResponse_Status, error) {
 	cli, err := c.getClient(jid)
 	if err != nil {
@@ -324,6 +352,12 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	return nil
 }
 
+type EventMessage struct {
+	JID     string `json:"jid"`
+	From    string `json:"from"`
+	Message string `json:"message"`
+}
+
 func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, error) {
 	ch := make(chan *EventMessage)
 
@@ -347,8 +381,28 @@ func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, 
 	return ch, nil
 }
 
-type EventMessage struct {
-	JID     string
-	From    string
-	Message string
+func (c *Controller) GetWebhook(ctx context.Context, jid string) (*pb.GetWebhookResponse, error) {
+	res, err := c.container.getWebhook(jid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrWebhookNotFound
+	}
+	return res, err
+}
+
+func (c *Controller) SaveWebhook(ctx context.Context, jid, url string) error {
+	if _, err := c.getClient(jid); err != nil {
+		return ErrDeviceNotFound
+	}
+	if err := c.container.saveWebhook(jid, url); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Controller) DeleteWebhook(ctx context.Context, jid string) error {
+	if err := c.container.deleteWebhook(jid); err != nil {
+		return err
+	}
+	return nil
 }
