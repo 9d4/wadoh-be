@@ -35,7 +35,7 @@ func LoadConfig() (*Config, error) {
 }
 
 func NewEnvProvider() koanf.Provider {
-	const prefix = "WADOH_"
+	const prefix = ""
 	envCbFn := func(s string) string {
 		s = strings.TrimPrefix(s, prefix)
 		s = strings.ToLower(s)
