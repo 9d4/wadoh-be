@@ -2,7 +2,7 @@
 // whatsmeow.
 // This file is where to define migrations. Every table should use prefix
 // `wadohbe` to prevent conflict.
-package main
+package container
 
 import (
 	"database/sql"

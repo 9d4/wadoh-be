@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -9,12 +8,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/knadh/koanf/parsers/dotenv"
-	"github.com/knadh/koanf/providers/env"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/providers/structs"
-	"github.com/knadh/koanf/v2"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow/store"
@@ -22,71 +15,42 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/9d4/wadoh-be/config"
+	"github.com/9d4/wadoh-be/container"
+	"github.com/9d4/wadoh-be/controller"
 	"github.com/9d4/wadoh-be/pb"
 )
 
-var konf = koanf.New(".")
+func main() {
+	setupLogger()
 
-func init() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{
-		Out:        os.Stderr,
-		TimeFormat: zerolog.TimeFieldFormat,
-	}).Level(zerolog.InfoLevel)
-
-	loadConfig()
-
-	if konf.Bool("development") {
-		log.Logger = log.Level(zerolog.TraceLevel)
-		log.Debug().Msg("development mode")
-	}
-	
-	store.DeviceProps.Os = proto.String("Wadoh")
-}
-
-func loadConfig() {
-	konf.Load(structs.Provider(defaultDBConfig, "koanf"), nil)
-	konf.Set("grpc_port", 50051)
-
-	envCbFn := func(s string) string {
-		return strings.ReplaceAll(strings.ToLower(s), "__", ".")
-	}
-
-	err := konf.Load(file.Provider(".env"), dotenv.ParserEnv("", "__", envCbFn))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Err(err).Send()
-	}
-
-	// Environment values will take precedence over .env files
-	err = konf.Load(env.Provider("", "__", envCbFn), nil)
+	config, err := config.LoadConfig()
 	if err != nil {
 		log.Err(err).Send()
+		return
 	}
-}
+	store.DeviceProps.Os = proto.String(config.ClientName)
 
-func main() {
-	var dbConfig *DBConfig
-	if err := konf.Unmarshal("", &dbConfig); err != nil {
-		log.Fatal().Err(err).Send()
-	}
-
-	container, err := NewContainer(dbConfig, log.Logger)
+	container, err := container.NewContainer(config.DBPath, log.Logger)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable create container")
+		return
 	}
 
-	controller := NewController(container, log.With().Str("logger", "controller").Logger())
+	control := controller.NewController(container, log.With().Str("logger", "controller").Logger())
 
-	go controller.loop()
+	go control.Start()
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", konf.Int("grpc_port")))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.Port))
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("unabe to listen")
+		return
 	}
 
 	grpcServer := grpc.NewServer()
 	reflection.Register(grpcServer)
 
-	controllerServer := &controllerServiceServer{controller: controller}
+	controllerServer := controller.NewGRPCController(control)
 	pb.RegisterControllerServiceServer(grpcServer, controllerServer)
 
 	go func() {
@@ -102,6 +66,45 @@ func main() {
 	<-interrupt
 	log.Info().Msg("shutting down...")
 	grpcServer.GracefulStop()
-	<-controller.Shutdown()
+	<-control.Shutdown()
 	log.Info().Msg("exited gracefully")
+}
+
+func setupLogger() {
+	log.Logger = log.Logger.
+		Level(zerolog.InfoLevel).
+		With().
+		Caller().
+		Logger()
+
+	level := strings.ToLower(os.Getenv("LEVEL"))
+	if level == "" {
+		return
+	}
+
+	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{
+		Out:        os.Stderr,
+		TimeFormat: zerolog.TimeFieldFormat,
+	})
+
+	switch level {
+	case "trace":
+		log.Logger = log.Level(zerolog.TraceLevel)
+	case "debug":
+		log.Logger = log.Level(zerolog.DebugLevel)
+	case "info":
+		log.Logger = log.Level(zerolog.InfoLevel)
+	case "warn":
+		log.Logger = log.Level(zerolog.WarnLevel)
+	case "error":
+		log.Logger = log.Level(zerolog.ErrorLevel)
+	case "fatal":
+		log.Logger = log.Level(zerolog.FatalLevel)
+	case "panic":
+		log.Logger = log.Level(zerolog.PanicLevel)
+	case "nolevel":
+		log.Logger = log.Level(zerolog.NoLevel)
+	case "disabled":
+		log.Logger = log.Level(zerolog.Disabled)
+	}
 }

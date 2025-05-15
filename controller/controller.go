@@ -1,32 +1,41 @@
-package main
+package controller
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand/v2"
+	"net/http"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.mau.fi/whatsmeow"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/9d4/wadoh-be/container"
 	"github.com/9d4/wadoh-be/pb"
 )
 
+var maxWebhookWorker = 100
+
 var (
-	maxWebhookWorker = 100
+	ErrDeviceNotFound  = errors.New("device not found")
+	ErrWebhookNotFound = errors.New("webhook not found")
 )
 
 type Controller struct {
-	container *Container
+	container *container.Container
 	logger    zerolog.Logger
 
 	clients     map[string]*whatsmeow.Client
@@ -39,7 +48,7 @@ type Controller struct {
 	sendMessageWG sync.WaitGroup
 }
 
-func NewController(container *Container, logger zerolog.Logger) *Controller {
+func NewController(container *container.Container, logger zerolog.Logger) *Controller {
 	c := &Controller{
 		container:    container,
 		logger:       logger,
@@ -54,7 +63,7 @@ func NewController(container *Container, logger zerolog.Logger) *Controller {
 	return c
 }
 
-func (c *Controller) loop() {
+func (c *Controller) Start() {
 	c.ConnectAllDevices()
 	tick := time.NewTicker(10 * time.Second)
 	for {
@@ -67,6 +76,58 @@ func (c *Controller) loop() {
 
 func (c *Controller) startWebhookWorker(ec chan *EventMessage) {
 	startWebhook(c, ec, maxWebhookWorker)
+}
+
+func startWebhook(c *Controller, ec chan *EventMessage, max int) {
+	wg := sync.WaitGroup{}
+	wg.Add(max)
+	for i := 0; i < max; i++ {
+		go webhookWorker(c, ec)
+		wg.Done()
+	}
+	wg.Wait()
+}
+
+func webhookWorker(c *Controller, ec chan *EventMessage) {
+	cli := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	for ev := range ec {
+		if ev == nil {
+			continue
+		}
+
+		res, err := c.GetWebhook(context.Background(), ev.JID)
+		if err != nil {
+			log.Debug().Caller().Err(err)
+			continue
+		}
+
+		var body bytes.Buffer
+		if err := json.NewEncoder(&body).Encode(ev); err != nil {
+			log.Debug().Caller().Err(fmt.Errorf("Error encoding json: %w", err))
+			continue
+		}
+
+		req, err := http.NewRequest("POST", res.GetUrl(), &body) // Assuming it's a POST request
+		if err != nil {
+			log.Debug().Caller().Err(fmt.Errorf("Error creating request: %w", err))
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := cli.Do(req)
+		if err != nil {
+			log.Debug().Caller().Err(fmt.Errorf("Error executing request: %w", err))
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Debug().Caller().Err(fmt.Errorf("Unexpected response status: %v", resp.Status))
+			continue
+		}
+	}
 }
 
 func (c *Controller) Shutdown() <-chan error {
@@ -92,7 +153,7 @@ func (c *Controller) Shutdown() <-chan error {
 }
 
 func (c *Controller) ConnectAllDevices() error {
-	devices, err := c.container.GetAllDevices()
+	devices, err := c.container.GetAllDevices(context.Background())
 	if err != nil {
 		return err
 	}
@@ -203,7 +264,7 @@ func (c *Controller) RegisterNewDevice(
 	resc chan *pb.RegisterDeviceResponse,
 	done chan struct{},
 ) error {
-	device, err := c.container.GetDevice(types.NewJID(req.Phone, types.DefaultUserServer))
+	device, err := c.container.GetDevice(context.Background(), types.NewJID(req.Phone, types.DefaultUserServer))
 	if err != nil {
 		return err
 	}
@@ -211,7 +272,7 @@ func (c *Controller) RegisterNewDevice(
 		device = c.container.NewDevice()
 	}
 
-	logger := c.container.logger.With().Str("logger", "client-reg:"+req.Phone).Logger()
+	logger := c.logger.With().Str("logger", "client-reg:"+req.Phone).Logger()
 	cli := whatsmeow.NewClient(device, waLog.Zerolog(logger))
 	if cli.Store.ID != nil {
 		return errors.New("device already registered")
@@ -282,7 +343,6 @@ func (c *Controller) RegisterNewDevice(
 						close(done)
 						return
 					}
-
 				}
 			}
 		}
@@ -297,7 +357,7 @@ func (c *Controller) RegisterNewDevice(
 			case <-done:
 				return
 			default:
-				code, err := cli.PairPhone(req.Phone, req.PushNotification, whatsmeow.PairClientChrome, "Chrome (MacOS)")
+				code, err := cli.PairPhone(context.Background(), req.Phone, req.PushNotification, whatsmeow.PairClientChrome, "Chrome (MacOS)")
 				if err == nil {
 					resc <- &pb.RegisterDeviceResponse{PairCode: proto.String(code)}
 					c.logger.Debug().Msg("paircode sent to channel")
@@ -340,7 +400,7 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 		cli.SendChatPresence(toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
 		cli.SendPresence(types.PresenceUnavailable)
 
-		if _, err := cli.SendMessage(context.Background(), toJid, &waProto.Message{
+		if _, err := cli.SendMessage(context.Background(), toJid, &waE2E.Message{
 			Conversation: &body,
 		}); err != nil {
 			c.logger.Debug().Caller().Err(err).Send()
@@ -382,7 +442,7 @@ func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, 
 }
 
 func (c *Controller) GetWebhook(ctx context.Context, jid string) (*pb.GetWebhookResponse, error) {
-	res, err := c.container.getWebhook(jid)
+	res, err := c.container.GetWebhook(jid)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrWebhookNotFound
 	}
@@ -393,7 +453,7 @@ func (c *Controller) SaveWebhook(ctx context.Context, jid, url string) error {
 	if _, err := c.getClient(jid); err != nil {
 		return ErrDeviceNotFound
 	}
-	if err := c.container.saveWebhook(jid, url); err != nil {
+	if err := c.container.SaveWebhook(jid, url); err != nil {
 		return err
 	}
 
@@ -401,7 +461,7 @@ func (c *Controller) SaveWebhook(ctx context.Context, jid, url string) error {
 }
 
 func (c *Controller) DeleteWebhook(ctx context.Context, jid string) error {
-	if err := c.container.deleteWebhook(jid); err != nil {
+	if err := c.container.DeleteWebhook(jid); err != nil {
 		return err
 	}
 	return nil

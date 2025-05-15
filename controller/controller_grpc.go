@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"context"
@@ -10,12 +10,16 @@ import (
 	"github.com/9d4/wadoh-be/pb"
 )
 
-type controllerServiceServer struct {
+type ControllerServiceServer struct {
 	pb.UnimplementedControllerServiceServer
 	controller *Controller
 }
 
-func (c *controllerServiceServer) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusResponse, error) {
+func NewGRPCController(controller *Controller) *ControllerServiceServer {
+	return &ControllerServiceServer{controller: controller}
+}
+
+func (c *ControllerServiceServer) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusResponse, error) {
 	status, err := c.controller.Status(req.Jid)
 	if err != nil {
 		return nil, err
@@ -24,7 +28,7 @@ func (c *controllerServiceServer) Status(ctx context.Context, req *pb.StatusRequ
 	return &pb.StatusResponse{Status: status}, nil
 }
 
-func (c *controllerServiceServer) RegisterDevice(req *pb.RegisterDeviceRequest, stream pb.ControllerService_RegisterDeviceServer) error {
+func (c *ControllerServiceServer) RegisterDevice(req *pb.RegisterDeviceRequest, stream pb.ControllerService_RegisterDeviceServer) error {
 	resc := make(chan *pb.RegisterDeviceResponse)
 	done := make(chan struct{})
 
@@ -62,7 +66,7 @@ OUTER:
 	return nil
 }
 
-func (c *controllerServiceServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.Empty, error) {
+func (c *ControllerServiceServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.Empty, error) {
 	if err := c.controller.SendMessage(ctx, req); err != nil {
 		return nil, err
 	}
@@ -70,7 +74,7 @@ func (c *controllerServiceServer) SendMessage(ctx context.Context, req *pb.SendM
 	return &pb.Empty{}, nil
 }
 
-func (c *controllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.ControllerService_ReceiveMessageServer) error {
+func (c *ControllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.ControllerService_ReceiveMessageServer) error {
 	recv, err := c.controller.ReceiveMessage(stream.Context())
 	if err != nil {
 		return err
@@ -86,7 +90,7 @@ func (c *controllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.Contro
 	return nil
 }
 
-func (c *controllerServiceServer) GetWebhook(ctx context.Context, req *pb.GetWebhookRequest) (*pb.GetWebhookResponse, error) {
+func (c *ControllerServiceServer) GetWebhook(ctx context.Context, req *pb.GetWebhookRequest) (*pb.GetWebhookResponse, error) {
 	res, err := c.controller.GetWebhook(ctx, req.GetJid())
 	if err != nil {
 		if errors.Is(err, ErrWebhookNotFound) {
@@ -97,7 +101,7 @@ func (c *controllerServiceServer) GetWebhook(ctx context.Context, req *pb.GetWeb
 	return res, nil
 }
 
-func (c *controllerServiceServer) SaveWebhook(ctx context.Context, req *pb.SaveWebhookRequest) (*pb.Empty, error) {
+func (c *ControllerServiceServer) SaveWebhook(ctx context.Context, req *pb.SaveWebhookRequest) (*pb.Empty, error) {
 	if err := c.controller.SaveWebhook(ctx, req.GetJid(), req.GetUrl()); err != nil {
 		return nil, err
 	}
@@ -105,7 +109,7 @@ func (c *controllerServiceServer) SaveWebhook(ctx context.Context, req *pb.SaveW
 	return &pb.Empty{}, nil
 }
 
-func (c *controllerServiceServer) DeleteWebhook(ctx context.Context, req *pb.DeleteWebhookRequest) (*pb.Empty, error) {
+func (c *ControllerServiceServer) DeleteWebhook(ctx context.Context, req *pb.DeleteWebhookRequest) (*pb.Empty, error) {
 	if err := c.controller.DeleteWebhook(ctx, req.GetJid()); err != nil {
 		return nil, err
 	}
