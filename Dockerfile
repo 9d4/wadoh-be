@@ -1,4 +1,4 @@
-FROM golang:1.22-bookworm
+FROM golang:1.23-bookworm
 ENV CGO_ENABLED=1
 
 RUN apt-get update \
