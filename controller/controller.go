@@ -45,15 +45,16 @@ type Controller struct {
 	recvMessageC     []chan *EventMessage
 	recvMessageCLock sync.Mutex
 
-	sendMessageWG sync.WaitGroup
+	sendMessageLock map[string]*sync.Mutex
 }
 
 func NewController(container *container.Container, logger zerolog.Logger) *Controller {
 	c := &Controller{
-		container:    container,
-		logger:       logger,
-		clients:      make(map[string]*whatsmeow.Client),
-		recvMessageC: make([]chan *EventMessage, 0),
+		container:       container,
+		logger:          logger,
+		clients:         make(map[string]*whatsmeow.Client),
+		recvMessageC:    make([]chan *EventMessage, 0),
+		sendMessageLock: map[string]*sync.Mutex{},
 	}
 
 	workerChan := make(chan *EventMessage)
@@ -133,7 +134,10 @@ func webhookWorker(c *Controller, ec chan *EventMessage) {
 func (c *Controller) Shutdown() <-chan error {
 	finish := make(chan error)
 	go func() {
-		c.sendMessageWG.Wait()
+		for _, mu := range c.sendMessageLock {
+			mu.Lock()
+		}
+
 		var wg sync.WaitGroup
 		for _, cli := range c.clients {
 			wg.Add(1)
@@ -203,6 +207,7 @@ func (c *Controller) connectDevice(device *store.Device) {
 	}
 
 	cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
+	c.sendMessageLock[cli.Store.ID.String()] = &sync.Mutex{}
 }
 
 func (c *Controller) eventHandler(jid string) func(interface{}) {
@@ -382,9 +387,14 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	}
 	toJid := types.NewJID(req.Phone, types.DefaultUserServer)
 
-	c.sendMessageWG.Add(1)
+	mu := c.sendMessageLock[req.Jid]
+	if mu == nil {
+		return ErrDeviceNotFound
+	}
+
 	go func(body string) {
-		defer c.sendMessageWG.Done()
+		mu.Lock()
+		defer mu.Unlock()
 
 		const min, max = 1, 4
 		delay := time.Duration(rand.IntN(max-min)+max) * time.Second
@@ -392,10 +402,8 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 		cli.SendPresence(types.PresenceAvailable)
 		cli.SendChatPresence(toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 
-		tick := time.NewTicker(delay)
-		defer tick.Stop()
 		c.logger.Debug().Dur("typing delay", delay).Send()
-		<-tick.C
+		time.Sleep(delay)
 
 		cli.SendChatPresence(toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
 		cli.SendPresence(types.PresenceUnavailable)
@@ -407,6 +415,9 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 		} else {
 			c.logger.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("message sent")
 		}
+
+		// add delay before next message
+		time.Sleep(delay)
 	}(req.Body)
 
 	return nil
