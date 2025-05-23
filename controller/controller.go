@@ -45,16 +45,16 @@ type Controller struct {
 	recvMessageC     []chan *EventMessage
 	recvMessageCLock sync.Mutex
 
-	sendMessageLock map[string]*sync.Mutex
+	sendMessageLocks *SafeMap
 }
 
 func NewController(container *container.Container, logger zerolog.Logger) *Controller {
 	c := &Controller{
-		container:       container,
-		logger:          logger,
-		clients:         make(map[string]*whatsmeow.Client),
-		recvMessageC:    make([]chan *EventMessage, 0),
-		sendMessageLock: map[string]*sync.Mutex{},
+		container:        container,
+		logger:           logger,
+		clients:          make(map[string]*whatsmeow.Client),
+		recvMessageC:     make([]chan *EventMessage, 0),
+		sendMessageLocks: NewSafeMap(),
 	}
 
 	workerChan := make(chan *EventMessage)
@@ -134,18 +134,15 @@ func webhookWorker(c *Controller, ec chan *EventMessage) {
 func (c *Controller) Shutdown() <-chan error {
 	finish := make(chan error)
 	go func() {
-		for _, mu := range c.sendMessageLock {
-			mu.Lock()
-		}
-
 		var wg sync.WaitGroup
+		wg.Add(len(c.clients))
+		wg.Add(len(c.recvMessageC))
+
 		for _, cli := range c.clients {
-			wg.Add(1)
 			cli.Disconnect()
 			wg.Done()
 		}
 		for _, ec := range c.recvMessageC {
-			wg.Add(1)
 			close(ec)
 			wg.Done()
 		}
@@ -162,11 +159,21 @@ func (c *Controller) ConnectAllDevices() error {
 		return err
 	}
 
+	knownIDs := []string{}
+
 	for _, d := range devices {
 		d := d
 		go c.connectDevice(d)
+
+		// Check if the device does not have message lock mutex then create it.
+		if mu := c.sendMessageLocks.GetMutex(d.ID.String()); mu == nil {
+			c.sendMessageLocks.AddMutex(d.ID.String())
+		}
+
+		knownIDs = append(knownIDs, d.ID.String())
 	}
 
+	c.sendMessageLocks.DeleteUnknownKeys(knownIDs)
 	return nil
 }
 
@@ -207,7 +214,6 @@ func (c *Controller) connectDevice(device *store.Device) {
 	}
 
 	cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
-	c.sendMessageLock[cli.Store.ID.String()] = &sync.Mutex{}
 }
 
 func (c *Controller) eventHandler(jid string) func(interface{}) {
@@ -387,9 +393,9 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	}
 	toJid := types.NewJID(req.Phone, types.DefaultUserServer)
 
-	mu := c.sendMessageLock[req.Jid]
+	mu := c.sendMessageLocks.GetMutex(cli.Store.ID.String())
 	if mu == nil {
-		return ErrDeviceNotFound
+		return fmt.Errorf("mutex not found: %w", ErrDeviceNotFound)
 	}
 
 	go func(body string) {
