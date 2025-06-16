@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -252,7 +253,7 @@ func (c *Controller) eventHandler(jid string) func(interface{}) {
 func (c *Controller) Status(jid string) (pb.StatusResponse_Status, error) {
 	cli, err := c.getClient(jid)
 	if err != nil {
-		if errors.Is(err, ErrDeviceNotFound) {
+		if errors.Is(err, ErrDeviceNotFound) || errors.Is(err, os.ErrNotExist) {
 			return pb.StatusResponse_STATUS_NOT_FOUND, nil
 		}
 
