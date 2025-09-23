@@ -1,24 +1,26 @@
 module github.com/9d4/wadoh-be
 
-go 1.23.0
+go 1.24.0
 
-toolchain go1.23.6
+toolchain go1.24.5
 
 require (
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/structs v1.0.0
-	github.com/knadh/koanf/v2 v2.2.0
-	github.com/mattn/go-sqlite3 v1.14.28
+	github.com/knadh/koanf/v2 v2.3.0
+	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/rs/zerolog v1.34.0
-	go.mau.fi/whatsmeow v0.0.0-20250514120708-22ca98ea604a
-	google.golang.org/grpc v1.72.1
-	google.golang.org/protobuf v1.36.6
+	go.mau.fi/whatsmeow v0.0.0-20250922112717-258fd9454b95
+	google.golang.org/grpc v1.75.1
+	google.golang.org/protobuf v1.36.9
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/beeper/argo-go v1.1.2 // indirect
+	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
@@ -26,13 +28,14 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/petermattis/goid v0.0.0-20250508124226-395b08cebbdb // indirect
+	github.com/petermattis/goid v0.0.0-20250904145737-900bdf8bb490 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.30 // indirect
 	go.mau.fi/libsignal v0.2.0 // indirect
-	go.mau.fi/util v0.8.6 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
+	go.mau.fi/util v0.9.1 // indirect
+	golang.org/x/crypto v0.42.0 // indirect
+	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
+	golang.org/x/net v0.44.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250922171735-9219d122eba9 // indirect
 )
