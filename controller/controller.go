@@ -406,14 +406,14 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 		const min, max = 1, 4
 		delay := time.Duration(rand.IntN(max-min)+max) * time.Second
 
-		cli.SendPresence(types.PresenceAvailable)
-		cli.SendChatPresence(toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+		cli.SendPresence(context.TODO(), types.PresenceAvailable)
+		cli.SendChatPresence(context.TODO(), toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 
 		c.logger.Debug().Dur("typing delay", delay).Send()
 		time.Sleep(delay)
 
-		cli.SendChatPresence(toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
-		cli.SendPresence(types.PresenceUnavailable)
+		cli.SendChatPresence(context.TODO(), toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
+		cli.SendPresence(context.TODO(), types.PresenceUnavailable)
 
 		if _, err := cli.SendMessage(context.Background(), toJid, &waE2E.Message{
 			Conversation: &body,
