@@ -69,9 +69,9 @@ func (c *Controller) Start() {
 	c.ConnectAllDevices()
 	tick := time.NewTicker(10 * time.Second)
 	for {
-		c.logger.Debug().Msg("loop start")
+		c.logger.Trace().Msg("loop start")
 		c.ConnectAllDevices()
-		c.logger.Debug().Msg("loop end")
+		c.logger.Trace().Msg("loop end")
 		<-tick.C
 	}
 }
@@ -241,9 +241,6 @@ func (c *Controller) eventHandler(jid string) func(interface{}) {
 
 			send(event)
 			c.logger.Debug().Any("evtMessage", event).Msg("sent message event to channels")
-
-		default:
-			c.logger.Debug().Msgf("unhandled event case: %#+v", evt)
 		}
 	}
 
@@ -415,10 +412,10 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 		cli.SendChatPresence(context.TODO(), toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
 		cli.SendPresence(context.TODO(), types.PresenceUnavailable)
 
-		if _, err := cli.SendMessage(context.Background(), toJid, &waE2E.Message{
+		if _, err := cli.SendMessage(context.TODO(), toJid, &waE2E.Message{
 			Conversation: &body,
 		}); err != nil {
-			c.logger.Debug().Caller().Err(err).Send()
+			c.logger.Error().Caller().Err(err).Msg("unable to send message")
 		} else {
 			c.logger.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("message sent")
 		}
@@ -428,6 +425,68 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	}(req.Body)
 
 	return nil
+}
+
+func (c *Controller) SendMessageImage(ctx context.Context, req *pb.SendImageMessageRequest, mime string) error {
+	cli, err := c.getClient(req.Jid)
+	if err != nil {
+		return err
+	}
+	mu := c.sendMessageLocks.GetMutex(cli.Store.ID.String())
+	if mu == nil {
+		return fmt.Errorf("mutex not found: %w", ErrDeviceNotFound)
+	}
+	toJid := types.NewJID(req.Phone, types.DefaultUserServer)
+
+	go func() {
+		mu.Lock()
+		defer mu.Unlock()
+
+		resp, err := cli.Upload(context.TODO(), req.Image, whatsmeow.MediaImage)
+		if err != nil {
+			log.Error().Caller().
+				Err(err).
+				Str("jid", req.Jid).
+				Str("to", toJid.String()).
+				Msg("unable to upload image")
+			return
+		}
+
+		msg := &waE2E.Message{
+			ImageMessage: &waE2E.ImageMessage{
+				Caption:       proto.String(req.Caption),
+				Mimetype:      proto.String(mime),
+				URL:           &resp.URL,
+				DirectPath:    &resp.DirectPath,
+				MediaKey:      resp.MediaKey,
+				FileEncSHA256: resp.FileEncSHA256,
+				FileSHA256:    resp.FileSHA256,
+				FileLength:    &resp.FileLength,
+			},
+		}
+
+		sendPresenceTyping(cli, toJid)
+		if _, err := cli.SendMessage(context.TODO(), toJid, msg); err != nil {
+			log.Error().Caller().
+				Err(err).
+				Str("jid", req.Jid).
+				Str("to", toJid.String()).
+				Msg("unable to send image message")
+			return
+		}
+
+		log.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("image message sent")
+	}()
+
+	return nil
+}
+
+func sendPresenceTyping(cli *whatsmeow.Client, toJid types.JID) {
+	cli.SendChatPresence(context.TODO(), toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
+	const min, max = 1, 4
+	delay := time.Duration(rand.IntN(max-min)+max) * time.Second
+	time.Sleep(delay)
+	cli.SendChatPresence(context.TODO(), toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
 }
 
 type EventMessage struct {

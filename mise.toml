@@ -1,0 +1,4 @@
+[tools]
+protoc = "latest"
+protoc-gen-go = "latest"
+protoc-gen-go-grpc = "latest"

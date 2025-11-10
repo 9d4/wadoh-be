@@ -31,13 +31,15 @@ func main() {
 	}
 	store.DeviceProps.Os = proto.String(config.ClientName)
 
-	container, err := container.NewContainer(config.DBPath, log.Logger)
+	containerLogger := log.With().Str("logger", "container").Logger()
+	container, err := container.NewContainer(config.DBPath, containerLogger)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable create container")
 		return
 	}
 
-	control := controller.NewController(container, log.With().Str("logger", "controller").Logger())
+	controlLogger := log.With().Str("logger", "controller").Logger()
+	control := controller.NewController(container, controlLogger)
 
 	go control.Start()
 
@@ -71,9 +73,15 @@ func main() {
 }
 
 func setupLogger() {
+	appName := os.Getenv("APP_NAME")
+	if appName == "" {
+		appName = "wadoh-be"
+	}
+
 	log.Logger = log.Logger.
 		Level(zerolog.InfoLevel).
 		With().
+		Str("app", appName).
 		Caller().
 		Logger()
 

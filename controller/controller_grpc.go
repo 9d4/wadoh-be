@@ -3,12 +3,22 @@ package controller
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/9d4/wadoh-be/pb"
+	"github.com/gabriel-vasile/mimetype"
 )
+
+var ALLOWED_IMAGE_MIME_TYPES = []string{
+	"image/jpeg",
+	"image/png",
+	"image/gif",
+	"image/webp",
+	"image/heic",
+}
 
 type ControllerServiceServer struct {
 	pb.UnimplementedControllerServiceServer
@@ -72,6 +82,19 @@ func (c *ControllerServiceServer) SendMessage(ctx context.Context, req *pb.SendM
 	}
 
 	return &pb.Empty{}, nil
+}
+
+func (c *ControllerServiceServer) SendImageMessage(ctx context.Context, req *pb.SendImageMessageRequest) (*pb.SendImageMessageResponse, error) {
+	// Validate mime type of req.Image before sending
+	mime := mimetype.Detect(req.Image)
+	if !slices.Contains(ALLOWED_IMAGE_MIME_TYPES, mime.String()) {
+		return nil, status.Error(codes.InvalidArgument, "unsupported image mime type: "+mime.String())
+	}
+
+	if err := c.controller.SendMessageImage(ctx, req, mime.String()); err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 func (c *ControllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.ControllerService_ReceiveMessageServer) error {
