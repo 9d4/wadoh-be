@@ -64,7 +64,7 @@ func (c *Container) NewClient(id string) (*whatsmeow.Client, error) {
 		return nil, os.ErrNotExist
 	}
 
-	logger := c.logger.With().Str("logger", "client:"+jid.String()).Logger()
+	logger := c.logger.With().Str("clientLogger", "client:"+jid.String()).Logger()
 	cli := whatsmeow.NewClient(device, waLog.Zerolog(logger))
 
 	return cli, err

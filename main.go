@@ -31,14 +31,22 @@ func main() {
 	}
 	store.DeviceProps.Os = proto.String(config.ClientName)
 
-	containerLogger := log.With().Str("logger", "container").Logger()
+	containerLogLevel := strings.ToLower(os.Getenv("CONTAINER_LOG_LEVEL"))
+	containerLogger := log.With().
+		Str("logger", "container").
+		Logger().
+		Level(LevelToZerologLevel(containerLogLevel))
 	container, err := container.NewContainer(config.DBPath, containerLogger)
 	if err != nil {
 		log.Fatal().Err(err).Msg("unable create container")
 		return
 	}
 
-	controlLogger := log.With().Str("logger", "controller").Logger()
+	controlLoggerLevel := strings.ToLower(os.Getenv("CONTROLLER_LOG_LEVEL"))
+	controlLogger := log.With().
+		Str("logger", "controller").
+		Logger().
+		Level(LevelToZerologLevel(controlLoggerLevel))
 	control := controller.NewController(container, controlLogger)
 
 	go control.Start()
@@ -90,29 +98,35 @@ func setupLogger() {
 		return
 	}
 
-	log.Logger = log.Logger.Output(zerolog.ConsoleWriter{
-		Out:        os.Stderr,
-		TimeFormat: zerolog.TimeFieldFormat,
-	})
+	if os.Getenv("ENV") != "production" {
+		log.Logger = log.Logger.Output(zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: zerolog.TimeFieldFormat,
+		})
+	}
 
+	log.Logger = log.Level(LevelToZerologLevel(level)).Output(os.Stdout)
+}
+
+func LevelToZerologLevel(level string) zerolog.Level {
 	switch level {
 	case "trace":
-		log.Logger = log.Level(zerolog.TraceLevel)
+		return zerolog.TraceLevel
 	case "debug":
-		log.Logger = log.Level(zerolog.DebugLevel)
+		return zerolog.DebugLevel
 	case "info":
-		log.Logger = log.Level(zerolog.InfoLevel)
+		return zerolog.InfoLevel
 	case "warn":
-		log.Logger = log.Level(zerolog.WarnLevel)
+		return zerolog.WarnLevel
 	case "error":
-		log.Logger = log.Level(zerolog.ErrorLevel)
+		return zerolog.ErrorLevel
 	case "fatal":
-		log.Logger = log.Level(zerolog.FatalLevel)
+		return zerolog.FatalLevel
 	case "panic":
-		log.Logger = log.Level(zerolog.PanicLevel)
-	case "nolevel":
-		log.Logger = log.Level(zerolog.NoLevel)
+		return zerolog.PanicLevel
 	case "disabled":
-		log.Logger = log.Level(zerolog.Disabled)
+		return zerolog.Disabled
 	}
+
+	return zerolog.NoLevel
 }

@@ -83,7 +83,7 @@ func (c *Controller) startWebhookWorker(ec chan *EventMessage) {
 func startWebhook(c *Controller, ec chan *EventMessage, max int) {
 	wg := sync.WaitGroup{}
 	wg.Add(max)
-	for i := 0; i < max; i++ {
+	for range max {
 		go webhookWorker(c, ec)
 		wg.Done()
 	}
@@ -217,14 +217,14 @@ func (c *Controller) connectDevice(device *store.Device) {
 	cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
 }
 
-func (c *Controller) eventHandler(jid string) func(interface{}) {
+func (c *Controller) eventHandler(jid string) func(any) {
 	send := func(evt *EventMessage) {
 		for _, ch := range c.recvMessageC {
 			ch <- evt
 		}
 	}
 
-	fn := func(evt interface{}) {
+	fn := func(evt any) {
 		switch v := evt.(type) {
 		case *events.Message:
 			event := &EventMessage{
@@ -240,7 +240,7 @@ func (c *Controller) eventHandler(jid string) func(interface{}) {
 			}
 
 			send(event)
-			c.logger.Debug().Any("evtMessage", event).Msg("sent message event to channels")
+			c.logger.Info().Any("evtMessage", event).Msg("sent message event to channels")
 		}
 	}
 
