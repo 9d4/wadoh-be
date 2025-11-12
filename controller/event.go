@@ -2,6 +2,7 @@ package controller
 
 import (
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -15,6 +16,9 @@ type ClientEventHandler struct {
 	JID               string
 	logger            zerolog.Logger
 	lastSentMessageID *ttlcache.Cache[string, struct{}]
+
+	// Making sure handle event once at a time
+	mu sync.Mutex
 
 	onMessage func(event *EventMessage)
 }
@@ -39,19 +43,32 @@ func (h *ClientEventHandler) callOnMessage(evt *EventMessage) {
 }
 
 func (h *ClientEventHandler) handleEvent(evt any) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	switch v := evt.(type) {
 	case *events.Message:
-		h.logger.Info().
+		h.logger.Debug().
 			Str("event", "message").
 			Any("raw", v).
 			Msg("message event")
 
+		msg := v.Message.ExtendedTextMessage.GetText()
+		if msg == "" {
+			msg = v.Message.GetConversation()
+		}
+
+		if msg == "" {
+			h.logger.Debug().Msg("ignore empty message")
+			return
+		}
+
 		if v.Info.IsFromMe {
-			h.logger.Info().Msg("ignore message from self")
+			h.logger.Debug().Msg("ignore message from self")
 			return
 		}
 		if v.Info.IsGroup {
-			h.logger.Info().Msg("ignore message from group")
+			h.logger.Debug().Msg("ignore message from group")
 			return
 		}
 
@@ -77,14 +94,21 @@ func (h *ClientEventHandler) handleEvent(evt any) {
 			return
 		}
 
+		log.Info().Str("event", "message").
+			Str("jid", h.JID).
+			Str("from", from).
+			Str("message_id", v.Info.ID).
+			Str("message", msg).
+			Msg("received message, and triggering onMessage callback")
+
 		event := &EventMessage{
 			JID:       h.JID,
 			From:      from,
 			MessageID: v.Info.ID,
-			Message:   v.Message.ExtendedTextMessage.GetText(),
+			Message:   msg,
 		}
 
-		h.onMessage(event)
+		h.callOnMessage(event)
 		h.lastSentMessageID.Set(v.Info.ID, struct{}{}, 0)
 
 	default:

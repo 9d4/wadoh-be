@@ -223,6 +223,7 @@ func (c *Controller) connectDevice(device *store.Device) {
 		return
 	}
 
+	cli.RemoveEventHandlers()
 	cli.AddEventHandler(c.createEventHandler(cli.Store.ID.String()))
 }
 
@@ -339,6 +340,8 @@ func (c *Controller) RegisterNewDevice(
 						c.clientsLock.Lock()
 						defer c.clientsLock.Unlock()
 						c.clients[cli.Store.ID.String()] = cli
+
+						cli.RemoveEventHandlers()
 						cli.AddEventHandler(c.createEventHandler(cli.Store.ID.String()))
 
 						close(done)
