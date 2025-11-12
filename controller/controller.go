@@ -10,6 +10,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"os"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -227,6 +228,12 @@ func (c *Controller) eventHandler(jid string) func(any) {
 	fn := func(evt any) {
 		switch v := evt.(type) {
 		case *events.Message:
+			c.logger.Info().
+				Str("event", "message").
+				Str("jid", jid).
+				Any("raw", v).
+				Msg("message event")
+
 			event := &EventMessage{
 				JID:     jid,
 				From:    v.Info.Sender.User,
@@ -238,9 +245,17 @@ func (c *Controller) eventHandler(jid string) func(any) {
 			if event.Message == "" {
 				return
 			}
-
 			send(event)
-			c.logger.Info().Any("evtMessage", event).Msg("sent message event to channels")
+
+		default:
+			// Get type with reflection
+			t := reflect.TypeOf(v)
+			c.logger.Info().
+				Str("event", t.Name()).
+				Str("jid", jid).
+				Any("raw", v).
+				Msg("unhandled event type")
+
 		}
 	}
 
@@ -348,6 +363,7 @@ func (c *Controller) RegisterNewDevice(
 						c.clientsLock.Lock()
 						defer c.clientsLock.Unlock()
 						c.clients[cli.Store.ID.String()] = cli
+						cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
 
 						close(done)
 						return
