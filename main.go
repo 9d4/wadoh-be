@@ -86,9 +86,12 @@ func setupLogger() {
 		appName = "wadoh-be"
 	}
 
-	level := strings.ToLower(os.Getenv("LEVEL"))
+	level := LevelToZerologLevel(strings.ToLower(os.Getenv("LEVEL")))
+	if level == zerolog.NoLevel {
+		level = zerolog.InfoLevel
+	}
 	log.Logger = log.Logger.
-		Level(LevelToZerologLevel(level)).
+		Level(level).
 		With().
 		Str("app", appName).
 		Caller().

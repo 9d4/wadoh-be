@@ -105,9 +105,10 @@ func (c *ControllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.Contro
 
 	for evt := range recv {
 		stream.Send(&pb.EventMessage{
-			Jid:     evt.JID,
-			From:    evt.From,
-			Message: evt.Message,
+			Jid:       evt.JID,
+			From:      evt.From,
+			Message:   evt.Message,
+			MessageId: evt.MessageID,
 		})
 	}
 	return nil

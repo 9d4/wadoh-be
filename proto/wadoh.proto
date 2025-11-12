@@ -61,6 +61,7 @@ message EventMessage {
   string jid = 1;
   string from = 2;
   string message = 3;
+  string message_id = 4;
 }
 
 message GetWebhookRequest {

@@ -10,7 +10,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"os"
-	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -21,7 +20,6 @@ import (
 	"go.mau.fi/whatsmeow/proto/waE2E"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/types"
-	"go.mau.fi/whatsmeow/types/events"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
@@ -225,51 +223,19 @@ func (c *Controller) connectDevice(device *store.Device) {
 		return
 	}
 
-	cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
+	cli.AddEventHandler(c.createEventHandler(cli.Store.ID.String()))
 }
 
-func (c *Controller) eventHandler(jid string) func(any) {
-	send := func(evt *EventMessage) {
+// createEventHandler creates event handler for client.
+// TODO: I think we can optimize this by making sure that only one event handler is created per client.
+func (c *Controller) createEventHandler(jid string) func(any) {
+	h := NewClientEventHandler(jid, c.logger)
+	h.onMessage = func(evt *EventMessage) {
 		for _, ch := range c.recvMessageC {
 			ch <- evt
 		}
 	}
-
-	fn := func(evt any) {
-		switch v := evt.(type) {
-		case *events.Message:
-			c.logger.Info().
-				Str("event", "message").
-				Str("jid", jid).
-				Any("raw", v).
-				Msg("message event")
-
-			event := &EventMessage{
-				JID:     jid,
-				From:    v.Info.Sender.User,
-				Message: v.Message.ExtendedTextMessage.GetText(),
-			}
-
-			// TODO: better handling message and media
-			// for now just handle text, if no nothing in it don't send event
-			if event.Message == "" {
-				return
-			}
-			send(event)
-
-		default:
-			// Get type with reflection
-			t := reflect.TypeOf(v)
-			c.logger.Info().
-				Str("event", t.Name()).
-				Str("jid", jid).
-				Any("raw", v).
-				Msg("unhandled event type")
-
-		}
-	}
-
-	return fn
+	return h.handleEvent
 }
 
 func (c *Controller) Status(jid string) (pb.StatusResponse_Status, error) {
@@ -373,7 +339,7 @@ func (c *Controller) RegisterNewDevice(
 						c.clientsLock.Lock()
 						defer c.clientsLock.Unlock()
 						c.clients[cli.Store.ID.String()] = cli
-						cli.AddEventHandler(c.eventHandler(cli.Store.ID.String()))
+						cli.AddEventHandler(c.createEventHandler(cli.Store.ID.String()))
 
 						close(done)
 						return
@@ -516,9 +482,10 @@ func sendPresenceTyping(cli *whatsmeow.Client, toJid types.JID) time.Duration {
 }
 
 type EventMessage struct {
-	JID     string `json:"jid"`
-	From    string `json:"from"`
-	Message string `json:"message"`
+	JID       string `json:"jid"`
+	From      string `json:"from"`
+	MessageID string `json:"message_id"`
+	Message   string `json:"message"`
 }
 
 func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, error) {
