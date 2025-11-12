@@ -75,7 +75,7 @@ func main() {
 
 	<-interrupt
 	log.Info().Msg("shutting down...")
-	grpcServer.GracefulStop()
+	grpcServer.Stop()
 	<-control.Shutdown()
 	log.Info().Msg("exited gracefully")
 }
@@ -86,17 +86,14 @@ func setupLogger() {
 		appName = "wadoh-be"
 	}
 
+	level := strings.ToLower(os.Getenv("LEVEL"))
 	log.Logger = log.Logger.
-		Level(zerolog.InfoLevel).
+		Level(LevelToZerologLevel(level)).
 		With().
 		Str("app", appName).
 		Caller().
-		Logger()
-
-	level := strings.ToLower(os.Getenv("LEVEL"))
-	if level == "" {
-		return
-	}
+		Logger().
+		Output(os.Stdout)
 
 	if os.Getenv("ENV") != "production" {
 		log.Logger = log.Logger.Output(zerolog.ConsoleWriter{
@@ -104,8 +101,6 @@ func setupLogger() {
 			TimeFormat: zerolog.TimeFieldFormat,
 		})
 	}
-
-	log.Logger = log.Level(LevelToZerologLevel(level)).Output(os.Stdout)
 }
 
 func LevelToZerologLevel(level string) zerolog.Level {

@@ -48,6 +48,7 @@ type Controller struct {
 	recvMessageCLock sync.Mutex
 
 	sendMessageLocks *SafeMap
+	done             chan struct{}
 }
 
 func NewController(container *container.Container, logger zerolog.Logger) *Controller {
@@ -57,6 +58,7 @@ func NewController(container *container.Container, logger zerolog.Logger) *Contr
 		clients:          make(map[string]*whatsmeow.Client),
 		recvMessageC:     make([]chan *EventMessage, 0),
 		sendMessageLocks: NewSafeMap(),
+		done:             make(chan struct{}),
 	}
 
 	workerChan := make(chan *EventMessage)
@@ -69,6 +71,12 @@ func NewController(container *container.Container, logger zerolog.Logger) *Contr
 func (c *Controller) Start() {
 	c.ConnectAllDevices()
 	tick := time.NewTicker(10 * time.Second)
+
+	go func() {
+		<-c.done
+		tick.Stop()
+	}()
+
 	for {
 		c.logger.Trace().Msg("loop start")
 		c.ConnectAllDevices()
@@ -135,6 +143,8 @@ func webhookWorker(c *Controller, ec chan *EventMessage) {
 
 func (c *Controller) Shutdown() <-chan error {
 	finish := make(chan error)
+	close(c.done)
+
 	go func() {
 		var wg sync.WaitGroup
 		wg.Add(len(c.clients))
@@ -152,6 +162,7 @@ func (c *Controller) Shutdown() <-chan error {
 		finish <- nil
 	}()
 
+	c.container.Close()
 	return finish
 }
 
@@ -164,7 +175,6 @@ func (c *Controller) ConnectAllDevices() error {
 	knownIDs := []string{}
 
 	for _, d := range devices {
-		d := d
 		go c.connectDevice(d)
 
 		// Check if the device does not have message lock mutex then create it.
@@ -416,22 +426,17 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 		mu.Lock()
 		defer mu.Unlock()
 
-		const min, max = 1, 4
-		delay := time.Duration(rand.IntN(max-min)+max) * time.Second
-
-		cli.SendPresence(context.TODO(), types.PresenceAvailable)
-		cli.SendChatPresence(context.TODO(), toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
-
-		c.logger.Debug().Dur("typing delay", delay).Send()
-		time.Sleep(delay)
-
-		cli.SendChatPresence(context.TODO(), toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
-		cli.SendPresence(context.TODO(), types.PresenceUnavailable)
+		delay := sendPresenceTyping(cli, toJid)
 
 		if _, err := cli.SendMessage(context.TODO(), toJid, &waE2E.Message{
 			Conversation: &body,
 		}); err != nil {
-			c.logger.Error().Caller().Err(err).Msg("unable to send message")
+			c.logger.Error().Caller().
+				Err(err).
+				Str("jid", req.Jid).
+				Str("to", toJid.String()).
+				Str("body", body).
+				Msg("unable to send message")
 		} else {
 			c.logger.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("message sent")
 		}
@@ -481,7 +486,7 @@ func (c *Controller) SendMessageImage(ctx context.Context, req *pb.SendImageMess
 			},
 		}
 
-		sendPresenceTyping(cli, toJid)
+		delay := sendPresenceTyping(cli, toJid)
 		if _, err := cli.SendMessage(context.TODO(), toJid, msg); err != nil {
 			log.Error().Caller().
 				Err(err).
@@ -492,17 +497,22 @@ func (c *Controller) SendMessageImage(ctx context.Context, req *pb.SendImageMess
 		}
 
 		log.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("image message sent")
+
+		// add delay before next message
+		time.Sleep(delay)
 	}()
 
 	return nil
 }
 
-func sendPresenceTyping(cli *whatsmeow.Client, toJid types.JID) {
+func sendPresenceTyping(cli *whatsmeow.Client, toJid types.JID) time.Duration {
 	cli.SendChatPresence(context.TODO(), toJid, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 	const min, max = 1, 4
 	delay := time.Duration(rand.IntN(max-min)+max) * time.Second
 	time.Sleep(delay)
 	cli.SendChatPresence(context.TODO(), toJid, types.ChatPresencePaused, types.ChatPresenceMediaText)
+
+	return delay
 }
 
 type EventMessage struct {
@@ -523,6 +533,7 @@ func (c *Controller) ReceiveMessage(ctx context.Context) (<-chan *EventMessage, 
 		c.logger.Debug().Msg("cleaning recv message channel")
 		c.recvMessageCLock.Lock()
 		defer c.recvMessageCLock.Unlock()
+		defer close(ch)
 
 		c.recvMessageC = slices.DeleteFunc(c.recvMessageC, func(c chan *EventMessage) bool {
 			return c == ch
