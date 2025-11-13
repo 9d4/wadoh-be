@@ -487,6 +487,7 @@ func sendPresenceTyping(cli *whatsmeow.Client, toJid types.JID) time.Duration {
 type EventMessage struct {
 	JID       string `json:"jid"`
 	From      string `json:"from"`
+	PushName  string `json:"push_name"`
 	MessageID string `json:"message_id"`
 	Message   string `json:"message"`
 }

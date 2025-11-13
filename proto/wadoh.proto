@@ -62,6 +62,7 @@ message EventMessage {
   string from = 2;
   string message = 3;
   string message_id = 4;
+  string push_name = 5;
 }
 
 message GetWebhookRequest {

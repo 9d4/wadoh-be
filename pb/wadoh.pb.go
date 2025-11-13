@@ -487,6 +487,7 @@ type EventMessage struct {
 	From          string                 `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	MessageId     string                 `protobuf:"bytes,4,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	PushName      string                 `protobuf:"bytes,5,opt,name=push_name,json=pushName,proto3" json:"push_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -545,6 +546,13 @@ func (x *EventMessage) GetMessage() string {
 func (x *EventMessage) GetMessageId() string {
 	if x != nil {
 		return x.MessageId
+	}
+	return ""
+}
+
+func (x *EventMessage) GetPushName() string {
+	if x != nil {
+		return x.PushName
 	}
 	return ""
 }
@@ -778,13 +786,14 @@ const file_proto_wadoh_proto_rawDesc = "" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x14\n" +
 	"\x05image\x18\x03 \x01(\fR\x05image\x12\x18\n" +
 	"\acaption\x18\x04 \x01(\tR\acaption\"\x1a\n" +
-	"\x18SendImageMessageResponse\"m\n" +
+	"\x18SendImageMessageResponse\"\x8a\x01\n" +
 	"\fEventMessage\x12\x10\n" +
 	"\x03jid\x18\x01 \x01(\tR\x03jid\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\tR\x04from\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
-	"message_id\x18\x04 \x01(\tR\tmessageId\"%\n" +
+	"message_id\x18\x04 \x01(\tR\tmessageId\x12\x1b\n" +
+	"\tpush_name\x18\x05 \x01(\tR\bpushName\"%\n" +
 	"\x11GetWebhookRequest\x12\x10\n" +
 	"\x03jid\x18\x01 \x01(\tR\x03jid\"D\n" +
 	"\x12GetWebhookResponse\x12\x10\n" +

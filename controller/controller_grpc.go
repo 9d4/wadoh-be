@@ -109,6 +109,7 @@ func (c *ControllerServiceServer) ReceiveMessage(req *pb.Empty, stream pb.Contro
 			From:      evt.From,
 			Message:   evt.Message,
 			MessageId: evt.MessageID,
+			PushName:  evt.PushName,
 		})
 	}
 	return nil

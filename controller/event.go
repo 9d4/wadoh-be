@@ -74,6 +74,7 @@ func (h *ClientEventHandler) handleEvent(evt any) {
 
 		sender := v.Info.Sender
 		from := ""
+
 		if sender.Server == types.DefaultUserServer {
 			from = sender.User
 		} else {
@@ -104,6 +105,7 @@ func (h *ClientEventHandler) handleEvent(evt any) {
 		event := &EventMessage{
 			JID:       h.JID,
 			From:      from,
+			PushName:  v.Info.PushName,
 			MessageID: v.Info.ID,
 			Message:   msg,
 		}
