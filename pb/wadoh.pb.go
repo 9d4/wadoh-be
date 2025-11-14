@@ -318,12 +318,16 @@ func (x *RegisterDeviceResponse) GetJid() string {
 }
 
 type SendMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Jid           string                 `protobuf:"bytes,1,opt,name=jid,proto3" json:"jid,omitempty"`
-	Phone         string                 `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone,omitempty"`
-	Body          string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Jid               string                 `protobuf:"bytes,1,opt,name=jid,proto3" json:"jid,omitempty"`
+	Phone             string                 `protobuf:"bytes,2,opt,name=phone,proto3" json:"phone,omitempty"`
+	Body              string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	IgnoreGlobalQueue bool                   `protobuf:"varint,4,opt,name=ignore_global_queue,json=ignoreGlobalQueue,proto3" json:"ignore_global_queue,omitempty"`
+	UseReceiverQueue  bool                   `protobuf:"varint,5,opt,name=use_receiver_queue,json=useReceiverQueue,proto3" json:"use_receiver_queue,omitempty"`
+	TypingDuration    int64                  `protobuf:"varint,6,opt,name=typing_duration,json=typingDuration,proto3" json:"typing_duration,omitempty"`
+	DelayAfterSent    int64                  `protobuf:"varint,7,opt,name=delay_after_sent,json=delayAfterSent,proto3" json:"delay_after_sent,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SendMessageRequest) Reset() {
@@ -375,6 +379,34 @@ func (x *SendMessageRequest) GetBody() string {
 		return x.Body
 	}
 	return ""
+}
+
+func (x *SendMessageRequest) GetIgnoreGlobalQueue() bool {
+	if x != nil {
+		return x.IgnoreGlobalQueue
+	}
+	return false
+}
+
+func (x *SendMessageRequest) GetUseReceiverQueue() bool {
+	if x != nil {
+		return x.UseReceiverQueue
+	}
+	return false
+}
+
+func (x *SendMessageRequest) GetTypingDuration() int64 {
+	if x != nil {
+		return x.TypingDuration
+	}
+	return 0
+}
+
+func (x *SendMessageRequest) GetDelayAfterSent() int64 {
+	if x != nil {
+		return x.DelayAfterSent
+	}
+	return 0
 }
 
 type SendImageMessageRequest struct {
@@ -776,11 +808,15 @@ const file_proto_wadoh_proto_rawDesc = "" +
 	"\n" +
 	"_pair_codeB\v\n" +
 	"\t_loggedInB\x06\n" +
-	"\x04_jid\"P\n" +
+	"\x04_jid\"\x81\x02\n" +
 	"\x12SendMessageRequest\x12\x10\n" +
 	"\x03jid\x18\x01 \x01(\tR\x03jid\x12\x14\n" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x12\n" +
-	"\x04body\x18\x03 \x01(\tR\x04body\"q\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x12.\n" +
+	"\x13ignore_global_queue\x18\x04 \x01(\bR\x11ignoreGlobalQueue\x12,\n" +
+	"\x12use_receiver_queue\x18\x05 \x01(\bR\x10useReceiverQueue\x12'\n" +
+	"\x0ftyping_duration\x18\x06 \x01(\x03R\x0etypingDuration\x12(\n" +
+	"\x10delay_after_sent\x18\a \x01(\x03R\x0edelayAfterSent\"q\n" +
 	"\x17SendImageMessageRequest\x12\x10\n" +
 	"\x03jid\x18\x01 \x01(\tR\x03jid\x12\x14\n" +
 	"\x05phone\x18\x02 \x01(\tR\x05phone\x12\x14\n" +
