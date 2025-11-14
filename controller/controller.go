@@ -38,25 +38,29 @@ type Controller struct {
 	container *container.Container
 	logger    zerolog.Logger
 
-	clients     map[string]*whatsmeow.Client
-	clientsLock sync.Mutex
+	clients            map[string]*whatsmeow.Client
+	sendMessageWorkers map[*whatsmeow.Client]*SendMessageWorker
+	clientsLock        sync.Mutex
 
 	// recvMessageC contains channels for event subscribers
 	recvMessageC     []chan *EventMessage
 	recvMessageCLock sync.Mutex
 
+	// Holds mutexes for sending messages per device
 	sendMessageLocks *SafeMap
-	done             chan struct{}
+	// Signals shutdown
+	done chan struct{}
 }
 
 func NewController(container *container.Container, logger zerolog.Logger) *Controller {
 	c := &Controller{
-		container:        container,
-		logger:           logger,
-		clients:          make(map[string]*whatsmeow.Client),
-		recvMessageC:     make([]chan *EventMessage, 0),
-		sendMessageLocks: NewSafeMap(),
-		done:             make(chan struct{}),
+		container:          container,
+		logger:             logger,
+		clients:            make(map[string]*whatsmeow.Client),
+		sendMessageWorkers: make(map[*whatsmeow.Client]*SendMessageWorker),
+		recvMessageC:       make([]chan *EventMessage, 0),
+		sendMessageLocks:   NewSafeMap(),
+		done:               make(chan struct{}),
 	}
 
 	workerChan := make(chan *EventMessage)
