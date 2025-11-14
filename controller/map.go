@@ -53,3 +53,53 @@ func (sm *SafeMap) DeleteUnknownKeys(knownKeys []string) {
 		}
 	}
 }
+
+// Modify safe map to use generics on both key and value types
+type GenericSafeMap[K comparable, V any] struct {
+	data map[K]V
+	mu   sync.Mutex
+}
+
+func NewGenericSafeMap[K comparable, V any]() *GenericSafeMap[K, V] {
+	return &GenericSafeMap[K, V]{
+		data: make(map[K]V),
+	}
+}
+
+func (gsm *GenericSafeMap[K, V]) Delete(key K) {
+	gsm.mu.Lock()
+	defer gsm.mu.Unlock()
+
+	delete(gsm.data, key)
+}
+
+func (gsm *GenericSafeMap[K, V]) Add(key K, value V) {
+	gsm.mu.Lock()
+	defer gsm.mu.Unlock()
+
+	gsm.data[key] = value
+}
+
+func (gsm *GenericSafeMap[K, V]) Get(key K) (V, bool) {
+	gsm.mu.Lock()
+	defer gsm.mu.Unlock()
+
+	value, ok := gsm.data[key]
+	return value, ok
+}
+
+func (gsm *GenericSafeMap[K, V]) DeleteUnknownKeys(knownKeys []K) {
+	gsm.mu.Lock()
+	defer gsm.mu.Unlock()
+
+	knownKeysMap := make(map[K]bool)
+	for _, key := range knownKeys {
+		knownKeysMap[key] = true
+	}
+
+	for key := range gsm.data {
+		if !knownKeysMap[key] {
+			delete(gsm.data, key)
+		}
+	}
+}
