@@ -46,6 +46,10 @@ message SendMessageRequest {
   string jid = 1;
   string phone = 2;
   string body = 3;
+  bool ignore_global_queue = 4;
+  bool use_receiver_queue = 5;
+  int64 typing_duration = 6;
+  int64 delay_after_sent = 7;
 }
 
 message SendImageMessageRequest {

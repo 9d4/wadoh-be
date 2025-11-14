@@ -26,7 +26,7 @@ type ClientEventHandler struct {
 func NewClientEventHandler(jid string, logger zerolog.Logger) *ClientEventHandler {
 	return &ClientEventHandler{
 		JID: jid,
-		lastSentMessageID: ttlcache.New[string, struct{}](
+		lastSentMessageID: ttlcache.New(
 			ttlcache.WithTTL[string, struct{}](30 * time.Second),
 		),
 		logger: logger.With().

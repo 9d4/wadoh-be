@@ -211,6 +211,24 @@ func (c *Controller) getClient(jid string) (*whatsmeow.Client, error) {
 	return cli, err
 }
 
+func (c *Controller) getClientMessageWorker(cli *whatsmeow.Client) *SendMessageWorker {
+	c.clientsLock.Lock()
+	defer c.clientsLock.Unlock()
+
+	worker, ok := c.sendMessageWorkers[cli]
+	if ok {
+		return worker
+	}
+
+	logger := c.logger.With().
+		Str("subLogger", "SendMessageWorker").
+		Str("jid", cli.Store.ID.String()).
+		Logger()
+	worker = NewSendMessageWorker(cli, logger)
+	c.sendMessageWorkers[cli] = worker
+	return worker
+}
+
 func (c *Controller) connectDevice(device *store.Device) {
 	cli, err := c.getClient(device.ID.String())
 	if err != nil {
@@ -388,35 +406,18 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	if err != nil {
 		return err
 	}
-	toJid := types.NewJID(req.Phone, types.DefaultUserServer)
+	worker := c.getClientMessageWorker(cli)
+	to := types.NewJID(req.Phone, types.DefaultUserServer)
 
-	mu := c.sendMessageLocks.GetMutex(cli.Store.ID.String())
-	if mu == nil {
-		return fmt.Errorf("mutex not found: %w", ErrDeviceNotFound)
-	}
-
-	go func(body string) {
-		mu.Lock()
-		defer mu.Unlock()
-
-		delay := sendPresenceTyping(cli, toJid)
-
-		if _, err := cli.SendMessage(context.TODO(), toJid, &waE2E.Message{
-			Conversation: &body,
-		}); err != nil {
-			c.logger.Error().Caller().
-				Err(err).
-				Str("jid", req.Jid).
-				Str("to", toJid.String()).
-				Str("body", body).
-				Msg("unable to send message")
-		} else {
-			c.logger.Debug().Str("jid", req.Jid).Str("to", toJid.String()).Msg("message sent")
-		}
-
-		// add delay before next message
-		time.Sleep(delay)
-	}(req.Body)
+	body := req.Body
+	worker.Enqueue(&MessageJob{
+		To:                to,
+		Message:           &waE2E.Message{Conversation: &body},
+		DelayAfterSent:    time.Millisecond * time.Duration(req.DelayAfterSent),
+		TypingDuration:    time.Millisecond * time.Duration(req.TypingDuration),
+		IgnoreGlobalQueue: req.IgnoreGlobalQueue,
+		UseReceiverQueue:  req.UseReceiverQueue,
+	})
 
 	return nil
 }
