@@ -8,6 +8,7 @@ service ControllerService {
   rpc SendMessage(SendMessageRequest) returns (Empty);
   rpc SendImageMessage(SendImageMessageRequest) returns (SendImageMessageResponse);
   rpc ReceiveMessage(Empty) returns (stream EventMessage);
+  rpc DeleteDevice(DeleteDeviceRequest) returns (DeleteDeviceResponse);
   rpc GetWebhook(GetWebhookRequest) returns (GetWebhookResponse);
   rpc SaveWebhook(SaveWebhookRequest) returns (Empty);
   rpc DeleteWebhook(DeleteWebhookRequest) returns (Empty);
@@ -68,6 +69,12 @@ message EventMessage {
   string message_id = 4;
   string push_name = 5;
 }
+
+message DeleteDeviceRequest {
+  string jid = 1;
+}
+
+message DeleteDeviceResponse {}
 
 message GetWebhookRequest {
   string jid = 1;

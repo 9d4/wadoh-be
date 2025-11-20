@@ -401,6 +401,30 @@ func (c *Controller) RegisterNewDevice(
 	return nil
 }
 
+func (c *Controller) DeleteDevice(ctx context.Context, jid string) error {
+	cli, err := c.getClient(jid)
+	if err != nil {
+		return err
+	}
+
+	if err := cli.Logout(ctx); err != nil {
+		c.logger.Err(err).Str("jid", jid).Msg("unable to logout client, forcing delete")
+
+		cli.Disconnect()
+		if err := cli.Store.Delete(ctx); err != nil {
+			c.logger.Err(err).Str("jid", jid).Msg("unable to delete client store")
+			return fmt.Errorf("unable to delete client store: %w", err)
+		}
+		return nil
+	}
+
+	c.clientsLock.Lock()
+	delete(c.clients, jid)
+	c.clientsLock.Unlock()
+
+	return nil
+}
+
 func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest) error {
 	cli, err := c.getClient(req.Jid)
 	if err != nil {

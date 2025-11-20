@@ -24,6 +24,7 @@ const (
 	ControllerService_SendMessage_FullMethodName      = "/ControllerService/SendMessage"
 	ControllerService_SendImageMessage_FullMethodName = "/ControllerService/SendImageMessage"
 	ControllerService_ReceiveMessage_FullMethodName   = "/ControllerService/ReceiveMessage"
+	ControllerService_DeleteDevice_FullMethodName     = "/ControllerService/DeleteDevice"
 	ControllerService_GetWebhook_FullMethodName       = "/ControllerService/GetWebhook"
 	ControllerService_SaveWebhook_FullMethodName      = "/ControllerService/SaveWebhook"
 	ControllerService_DeleteWebhook_FullMethodName    = "/ControllerService/DeleteWebhook"
@@ -38,6 +39,7 @@ type ControllerServiceClient interface {
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*Empty, error)
 	SendImageMessage(ctx context.Context, in *SendImageMessageRequest, opts ...grpc.CallOption) (*SendImageMessageResponse, error)
 	ReceiveMessage(ctx context.Context, in *Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[EventMessage], error)
+	DeleteDevice(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
 	GetWebhook(ctx context.Context, in *GetWebhookRequest, opts ...grpc.CallOption) (*GetWebhookResponse, error)
 	SaveWebhook(ctx context.Context, in *SaveWebhookRequest, opts ...grpc.CallOption) (*Empty, error)
 	DeleteWebhook(ctx context.Context, in *DeleteWebhookRequest, opts ...grpc.CallOption) (*Empty, error)
@@ -119,6 +121,16 @@ func (c *controllerServiceClient) ReceiveMessage(ctx context.Context, in *Empty,
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ControllerService_ReceiveMessageClient = grpc.ServerStreamingClient[EventMessage]
 
+func (c *controllerServiceClient) DeleteDevice(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteDeviceResponse)
+	err := c.cc.Invoke(ctx, ControllerService_DeleteDevice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) GetWebhook(ctx context.Context, in *GetWebhookRequest, opts ...grpc.CallOption) (*GetWebhookResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetWebhookResponse)
@@ -158,6 +170,7 @@ type ControllerServiceServer interface {
 	SendMessage(context.Context, *SendMessageRequest) (*Empty, error)
 	SendImageMessage(context.Context, *SendImageMessageRequest) (*SendImageMessageResponse, error)
 	ReceiveMessage(*Empty, grpc.ServerStreamingServer[EventMessage]) error
+	DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
 	GetWebhook(context.Context, *GetWebhookRequest) (*GetWebhookResponse, error)
 	SaveWebhook(context.Context, *SaveWebhookRequest) (*Empty, error)
 	DeleteWebhook(context.Context, *DeleteWebhookRequest) (*Empty, error)
@@ -185,6 +198,9 @@ func (UnimplementedControllerServiceServer) SendImageMessage(context.Context, *S
 }
 func (UnimplementedControllerServiceServer) ReceiveMessage(*Empty, grpc.ServerStreamingServer[EventMessage]) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveMessage not implemented")
+}
+func (UnimplementedControllerServiceServer) DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDevice not implemented")
 }
 func (UnimplementedControllerServiceServer) GetWebhook(context.Context, *GetWebhookRequest) (*GetWebhookResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetWebhook not implemented")
@@ -292,6 +308,24 @@ func _ControllerService_ReceiveMessage_Handler(srv interface{}, stream grpc.Serv
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ControllerService_ReceiveMessageServer = grpc.ServerStreamingServer[EventMessage]
 
+func _ControllerService_DeleteDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDeviceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).DeleteDevice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_DeleteDevice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).DeleteDevice(ctx, req.(*DeleteDeviceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_GetWebhook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetWebhookRequest)
 	if err := dec(in); err != nil {
@@ -364,6 +398,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendImageMessage",
 			Handler:    _ControllerService_SendImageMessage_Handler,
+		},
+		{
+			MethodName: "DeleteDevice",
+			Handler:    _ControllerService_DeleteDevice_Handler,
 		},
 		{
 			MethodName: "GetWebhook",

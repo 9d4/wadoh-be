@@ -76,6 +76,13 @@ OUTER:
 	return nil
 }
 
+func (c *ControllerServiceServer) DeleteDevice(ctx context.Context, req *pb.DeleteDeviceRequest) (*pb.DeleteDeviceResponse, error) {
+	if err := c.controller.DeleteDevice(ctx, req.Jid); err != nil {
+		return nil, err
+	}
+	return &pb.DeleteDeviceResponse{}, nil
+}
+
 func (c *ControllerServiceServer) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.Empty, error) {
 	if err := c.controller.SendMessage(ctx, req); err != nil {
 		return nil, err

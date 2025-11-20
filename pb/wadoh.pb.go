@@ -589,6 +589,86 @@ func (x *EventMessage) GetPushName() string {
 	return ""
 }
 
+type DeleteDeviceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Jid           string                 `protobuf:"bytes,1,opt,name=jid,proto3" json:"jid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDeviceRequest) Reset() {
+	*x = DeleteDeviceRequest{}
+	mi := &file_proto_wadoh_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDeviceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDeviceRequest) ProtoMessage() {}
+
+func (x *DeleteDeviceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_wadoh_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDeviceRequest.ProtoReflect.Descriptor instead.
+func (*DeleteDeviceRequest) Descriptor() ([]byte, []int) {
+	return file_proto_wadoh_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *DeleteDeviceRequest) GetJid() string {
+	if x != nil {
+		return x.Jid
+	}
+	return ""
+}
+
+type DeleteDeviceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDeviceResponse) Reset() {
+	*x = DeleteDeviceResponse{}
+	mi := &file_proto_wadoh_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDeviceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDeviceResponse) ProtoMessage() {}
+
+func (x *DeleteDeviceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_wadoh_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDeviceResponse.ProtoReflect.Descriptor instead.
+func (*DeleteDeviceResponse) Descriptor() ([]byte, []int) {
+	return file_proto_wadoh_proto_rawDescGZIP(), []int{10}
+}
+
 type GetWebhookRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Jid           string                 `protobuf:"bytes,1,opt,name=jid,proto3" json:"jid,omitempty"`
@@ -598,7 +678,7 @@ type GetWebhookRequest struct {
 
 func (x *GetWebhookRequest) Reset() {
 	*x = GetWebhookRequest{}
-	mi := &file_proto_wadoh_proto_msgTypes[9]
+	mi := &file_proto_wadoh_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -610,7 +690,7 @@ func (x *GetWebhookRequest) String() string {
 func (*GetWebhookRequest) ProtoMessage() {}
 
 func (x *GetWebhookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_wadoh_proto_msgTypes[9]
+	mi := &file_proto_wadoh_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -623,7 +703,7 @@ func (x *GetWebhookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWebhookRequest.ProtoReflect.Descriptor instead.
 func (*GetWebhookRequest) Descriptor() ([]byte, []int) {
-	return file_proto_wadoh_proto_rawDescGZIP(), []int{9}
+	return file_proto_wadoh_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetWebhookRequest) GetJid() string {
@@ -643,7 +723,7 @@ type GetWebhookResponse struct {
 
 func (x *GetWebhookResponse) Reset() {
 	*x = GetWebhookResponse{}
-	mi := &file_proto_wadoh_proto_msgTypes[10]
+	mi := &file_proto_wadoh_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -655,7 +735,7 @@ func (x *GetWebhookResponse) String() string {
 func (*GetWebhookResponse) ProtoMessage() {}
 
 func (x *GetWebhookResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_wadoh_proto_msgTypes[10]
+	mi := &file_proto_wadoh_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +748,7 @@ func (x *GetWebhookResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetWebhookResponse.ProtoReflect.Descriptor instead.
 func (*GetWebhookResponse) Descriptor() ([]byte, []int) {
-	return file_proto_wadoh_proto_rawDescGZIP(), []int{10}
+	return file_proto_wadoh_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetWebhookResponse) GetUrl() string {
@@ -695,7 +775,7 @@ type SaveWebhookRequest struct {
 
 func (x *SaveWebhookRequest) Reset() {
 	*x = SaveWebhookRequest{}
-	mi := &file_proto_wadoh_proto_msgTypes[11]
+	mi := &file_proto_wadoh_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -707,7 +787,7 @@ func (x *SaveWebhookRequest) String() string {
 func (*SaveWebhookRequest) ProtoMessage() {}
 
 func (x *SaveWebhookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_wadoh_proto_msgTypes[11]
+	mi := &file_proto_wadoh_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +800,7 @@ func (x *SaveWebhookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveWebhookRequest.ProtoReflect.Descriptor instead.
 func (*SaveWebhookRequest) Descriptor() ([]byte, []int) {
-	return file_proto_wadoh_proto_rawDescGZIP(), []int{11}
+	return file_proto_wadoh_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SaveWebhookRequest) GetJid() string {
@@ -746,7 +826,7 @@ type DeleteWebhookRequest struct {
 
 func (x *DeleteWebhookRequest) Reset() {
 	*x = DeleteWebhookRequest{}
-	mi := &file_proto_wadoh_proto_msgTypes[12]
+	mi := &file_proto_wadoh_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -758,7 +838,7 @@ func (x *DeleteWebhookRequest) String() string {
 func (*DeleteWebhookRequest) ProtoMessage() {}
 
 func (x *DeleteWebhookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_wadoh_proto_msgTypes[12]
+	mi := &file_proto_wadoh_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,7 +851,7 @@ func (x *DeleteWebhookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWebhookRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWebhookRequest) Descriptor() ([]byte, []int) {
-	return file_proto_wadoh_proto_rawDescGZIP(), []int{12}
+	return file_proto_wadoh_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *DeleteWebhookRequest) GetJid() string {
@@ -829,7 +909,10 @@ const file_proto_wadoh_proto_rawDesc = "" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x04 \x01(\tR\tmessageId\x12\x1b\n" +
-	"\tpush_name\x18\x05 \x01(\tR\bpushName\"%\n" +
+	"\tpush_name\x18\x05 \x01(\tR\bpushName\"'\n" +
+	"\x13DeleteDeviceRequest\x12\x10\n" +
+	"\x03jid\x18\x01 \x01(\tR\x03jid\"\x16\n" +
+	"\x14DeleteDeviceResponse\"%\n" +
 	"\x11GetWebhookRequest\x12\x10\n" +
 	"\x03jid\x18\x01 \x01(\tR\x03jid\"D\n" +
 	"\x12GetWebhookResponse\x12\x10\n" +
@@ -839,13 +922,14 @@ const file_proto_wadoh_proto_rawDesc = "" +
 	"\x03jid\x18\x01 \x01(\tR\x03jid\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\"(\n" +
 	"\x14DeleteWebhookRequest\x12\x10\n" +
-	"\x03jid\x18\x01 \x01(\tR\x03jid2\xb6\x03\n" +
+	"\x03jid\x18\x01 \x01(\tR\x03jid2\xf3\x03\n" +
 	"\x11ControllerService\x12)\n" +
 	"\x06Status\x12\x0e.StatusRequest\x1a\x0f.StatusResponse\x12C\n" +
 	"\x0eRegisterDevice\x12\x16.RegisterDeviceRequest\x1a\x17.RegisterDeviceResponse0\x01\x12*\n" +
 	"\vSendMessage\x12\x13.SendMessageRequest\x1a\x06.Empty\x12G\n" +
 	"\x10SendImageMessage\x12\x18.SendImageMessageRequest\x1a\x19.SendImageMessageResponse\x12)\n" +
-	"\x0eReceiveMessage\x12\x06.Empty\x1a\r.EventMessage0\x01\x125\n" +
+	"\x0eReceiveMessage\x12\x06.Empty\x1a\r.EventMessage0\x01\x12;\n" +
+	"\fDeleteDevice\x12\x14.DeleteDeviceRequest\x1a\x15.DeleteDeviceResponse\x125\n" +
 	"\n" +
 	"GetWebhook\x12\x12.GetWebhookRequest\x1a\x13.GetWebhookResponse\x12*\n" +
 	"\vSaveWebhook\x12\x13.SaveWebhookRequest\x1a\x06.Empty\x12.\n" +
@@ -864,7 +948,7 @@ func file_proto_wadoh_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_wadoh_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_wadoh_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_proto_wadoh_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_proto_wadoh_proto_goTypes = []any{
 	(StatusResponse_Status)(0),       // 0: StatusResponse.Status
 	(*Empty)(nil),                    // 1: Empty
@@ -876,10 +960,12 @@ var file_proto_wadoh_proto_goTypes = []any{
 	(*SendImageMessageRequest)(nil),  // 7: SendImageMessageRequest
 	(*SendImageMessageResponse)(nil), // 8: SendImageMessageResponse
 	(*EventMessage)(nil),             // 9: EventMessage
-	(*GetWebhookRequest)(nil),        // 10: GetWebhookRequest
-	(*GetWebhookResponse)(nil),       // 11: GetWebhookResponse
-	(*SaveWebhookRequest)(nil),       // 12: SaveWebhookRequest
-	(*DeleteWebhookRequest)(nil),     // 13: DeleteWebhookRequest
+	(*DeleteDeviceRequest)(nil),      // 10: DeleteDeviceRequest
+	(*DeleteDeviceResponse)(nil),     // 11: DeleteDeviceResponse
+	(*GetWebhookRequest)(nil),        // 12: GetWebhookRequest
+	(*GetWebhookResponse)(nil),       // 13: GetWebhookResponse
+	(*SaveWebhookRequest)(nil),       // 14: SaveWebhookRequest
+	(*DeleteWebhookRequest)(nil),     // 15: DeleteWebhookRequest
 }
 var file_proto_wadoh_proto_depIdxs = []int32{
 	0,  // 0: StatusResponse.status:type_name -> StatusResponse.Status
@@ -888,19 +974,21 @@ var file_proto_wadoh_proto_depIdxs = []int32{
 	6,  // 3: ControllerService.SendMessage:input_type -> SendMessageRequest
 	7,  // 4: ControllerService.SendImageMessage:input_type -> SendImageMessageRequest
 	1,  // 5: ControllerService.ReceiveMessage:input_type -> Empty
-	10, // 6: ControllerService.GetWebhook:input_type -> GetWebhookRequest
-	12, // 7: ControllerService.SaveWebhook:input_type -> SaveWebhookRequest
-	13, // 8: ControllerService.DeleteWebhook:input_type -> DeleteWebhookRequest
-	3,  // 9: ControllerService.Status:output_type -> StatusResponse
-	5,  // 10: ControllerService.RegisterDevice:output_type -> RegisterDeviceResponse
-	1,  // 11: ControllerService.SendMessage:output_type -> Empty
-	8,  // 12: ControllerService.SendImageMessage:output_type -> SendImageMessageResponse
-	9,  // 13: ControllerService.ReceiveMessage:output_type -> EventMessage
-	11, // 14: ControllerService.GetWebhook:output_type -> GetWebhookResponse
-	1,  // 15: ControllerService.SaveWebhook:output_type -> Empty
-	1,  // 16: ControllerService.DeleteWebhook:output_type -> Empty
-	9,  // [9:17] is the sub-list for method output_type
-	1,  // [1:9] is the sub-list for method input_type
+	10, // 6: ControllerService.DeleteDevice:input_type -> DeleteDeviceRequest
+	12, // 7: ControllerService.GetWebhook:input_type -> GetWebhookRequest
+	14, // 8: ControllerService.SaveWebhook:input_type -> SaveWebhookRequest
+	15, // 9: ControllerService.DeleteWebhook:input_type -> DeleteWebhookRequest
+	3,  // 10: ControllerService.Status:output_type -> StatusResponse
+	5,  // 11: ControllerService.RegisterDevice:output_type -> RegisterDeviceResponse
+	1,  // 12: ControllerService.SendMessage:output_type -> Empty
+	8,  // 13: ControllerService.SendImageMessage:output_type -> SendImageMessageResponse
+	9,  // 14: ControllerService.ReceiveMessage:output_type -> EventMessage
+	11, // 15: ControllerService.DeleteDevice:output_type -> DeleteDeviceResponse
+	13, // 16: ControllerService.GetWebhook:output_type -> GetWebhookResponse
+	1,  // 17: ControllerService.SaveWebhook:output_type -> Empty
+	1,  // 18: ControllerService.DeleteWebhook:output_type -> Empty
+	10, // [10:19] is the sub-list for method output_type
+	1,  // [1:10] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -918,7 +1006,7 @@ func file_proto_wadoh_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_wadoh_proto_rawDesc), len(file_proto_wadoh_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
