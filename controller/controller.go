@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -432,6 +433,16 @@ func (c *Controller) SendMessage(ctx context.Context, req *pb.SendMessageRequest
 	}
 	worker := c.getClientMessageWorker(cli)
 	to := types.NewJID(req.Phone, types.DefaultUserServer)
+
+	if strings.Contains(req.Phone, "@") {
+		oldTo := to
+
+		to, err = types.ParseJID(req.Phone)
+		if err != nil {
+			log.Warn().Err(err).Str("phone", req.Phone).Msg("invalid JID format")
+			to = oldTo
+		}
+	}
 
 	body := req.Body
 	worker.Enqueue(&MessageJob{
